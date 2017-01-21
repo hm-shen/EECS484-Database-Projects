@@ -55,7 +55,7 @@ create table message (message_id integer,
                       on delete cascade);
 
 create table programs (program_id integer,
-                       institiution varchar2(100),
+                       institution varchar2(100),
                        concentration varchar2(100),
                        degree varchar2(100),
                        primary key (program_id));
@@ -75,7 +75,7 @@ create table user_events (event_id number,
                           event_name varchar2(100) not null,
                           event_tagline varchar2(100),
                           event_description varchar2(100),
-                          event_host varchar2(100),
+                          event_host varchar2(100) not null,
                           event_type varchar2(100),
                           event_subtype varchar2(100),
                           event_location varchar2(100),
@@ -97,7 +97,7 @@ create table participants (event_id number,
                            on delete cascade);
 
 create table albums (album_id varchar2(100),
-                     album_owner_id number,
+                     album_owner_id number not null,
                      album_name varchar2(100) not null,
                      album_created_time timestamp not null,
                      album_modified_time timestamp not null,
