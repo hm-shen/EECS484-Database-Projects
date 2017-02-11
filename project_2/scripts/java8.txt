@@ -1,0 +1,50 @@
+// ***** Query 8 *****
+	// Given the ID of a user, find information about that
+	// user's oldest friend and youngest friend
+	//
+	// If two users have exactly the same age, meaning that they were born
+	// on the same day, then assume that the one with the larger user_id is
+	// older
+	//
+	public void findAgeInfo(Long user_id) {
+		 try (Statement stmt = oracleConnection.createStatement(ResultSet.TYPE_SCROLL_INSENSITIVE,ResultSet.CONCUR_READ_ONLY)) {
+			 
+		 String q1 = "create view his_friend as select U.user_id as whos_friend_id, U1.user_id as friends_id "
+				 + " from " + userTableName + " U, " + userTableName + " U1, " + friendsTableName + " F "
+				 + " where U.user_id = " + user_id + " and ((U.user_id = F.user1_id and U1.user_id = F.user2_id) or (U.user_id = F.user2_id and U1.user_id = F.user1_id))";
+		 
+		 stmt.executeUpdate(q1);
+		 
+		 String q2 = "select U.user_id, U.first_name,U.last_name "
+				 + " from " + userTableName + " U, " + " his_friend hf where U.year_of_birth = "
+				 + " (select min(U2.year_of_birth) from " + userTableName + " U2,his_friend hf1 where U2.year_of_birth is not null and U2.user_id = hf1.friends_id) "
+				 + "and U.user_id = hf.friends_id and rownum = 1 order by U.month_of_birth ASC, U.day_of_birth ASC, U.user_id DESC";		 
+		 ResultSet rst = stmt.executeQuery(q2);		 
+		 if(rst.first())
+		 {
+		 long oldid = rst.getLong(1);
+		 String oldF = rst.getString(2);
+		 String oldL = rst.getString(3);
+		 this.oldestFriend = new UserInfo(oldid, oldF, oldL);
+		 }
+		 
+		 String q3 = "select U.user_id, U.first_name,U.last_name "
+				 + " from " + userTableName + " U, " + " his_friend hf where U.year_of_birth = "
+				 + " (select max(U2.year_of_birth) from " + userTableName + " U2,his_friend hf1 where U2.year_of_birth is not null and U2.user_id = hf1.friends_id) "
+				 + "and U.user_id = hf.friends_id and rownum = 1 order by U.month_of_birth DESC, U.day_of_birth DESC, U.user_id ASC";
+		 System.out.println(q3);	 
+		 if(rst.first())
+		 {
+		 long youngid = rst.getLong(1);
+		 String youngF = rst.getString(2);
+		 String youngL = rst.getString(3);
+		 this.youngestFriend = new UserInfo(youngid, youngF, youngL);
+		 }
+		 stmt.executeUpdate("drop view his_friend");
+		
+		 rst.close();
+		 stmt.close();
+		 } catch (SQLException err) {
+		 System.err.println(err.getMessage());
+		 }
+	}

@@ -1,0 +1,40 @@
+// ***** Query 9 *****
+	//
+	// Find pairs of potential siblings.
+	//
+	// A pair of users are potential siblings if they have the same last name
+	// and hometown, if they are friends, and
+	// if they are less than 10 years apart in age. Pairs of siblings are
+	// returned with the lower user_id user first
+	// on the line. They are ordered based on the first user_id and in the event
+	// of a tie, the second user_id.
+	//
+	//
+	public void findPotentialSiblings() {
+		try (Statement stmt = oracleConnection.createStatement()) {
+			String q = "select U1.user_id,U1.first_name,U1.last_name,U2.user_id,U2.first_name,U2.last_name " + " from "
+					+ userTableName + " U1, " + userTableName + " U2, " + friendsTableName + " F, "
+					+ hometownCityTableName + " UH1, " + hometownCityTableName + " UH2 "
+					+ " where U1.user_id < U2.user_id and U1.last_name = U2.last_name and (   (U1.user_id = F.user1_id and U2.user_id = F.user2_id) or (U1.user_id = F.user2_id and U2.user_id = F.user1_id))"
+					+ " and U1.user_id = UH1.user_id and U2.user_id = UH2.user_id and UH1.hometown_city_id is not null and UH1.hometown_city_id = UH2.hometown_city_id "
+					+ " and U1.year_of_birth is not null and U2.year_of_birth is not null "
+					+ " and (abs(U1.year_of_birth-U2.year_of_birth) < 10) order by U1.user_id asc , U2.user_id asc";
+			ResultSet rst = stmt.executeQuery(q);
+			while (rst.next()) {
+				Long user1_id = rst.getLong(1);
+				String user1FirstName = rst.getString(2);
+				String user1LastName = rst.getString(3);
+				Long user2_id = rst.getLong(4);
+				String user2FirstName = rst.getString(5);
+				String user2LastName = rst.getString(6);
+				SiblingInfo s = new SiblingInfo(user1_id, user1FirstName, user1LastName, user2_id, user2FirstName,
+						user2LastName);
+				this.siblings.add(s);
+			}
+			rst.close();
+			stmt.close();
+		} catch (SQLException err) {
+			System.err.println(err.getMessage());
+		}
+
+	}

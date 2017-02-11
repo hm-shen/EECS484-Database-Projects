@@ -1,0 +1,54 @@
+// **** Query 4 ****
+	// Find the top-n photos based on the number of tagged users
+	// If there are ties, choose the photo with the smaller numeric PhotoID
+	// first
+	//
+	public void findPhotosWithMostTags(int n) {
+		try (Statement stmt = oracleConnection.createStatement()) {
+			stmt.executeUpdate("create view tag_info as select T.tag_photo_id,count(T.tag_photo_id) as cont" + " from "
+					+ tagTableName + " T group by T.tag_photo_id order by cont DESC, T.tag_photo_id ASC");
+
+			String q = "select U.user_id, U.first_name, U.last_name,P.photo_id, P.album_id, A.album_name, P.photo_caption, P.photo_link"
+					+ " from " + userTableName + " U, " + photoTableName + " P, " + albumTableName + " A, tag_info TI, "
+					+ tagTableName + " T "
+					+ " where TI.tag_photo_id = T.tag_photo_id and T.tag_photo_id = P.photo_id and P.album_id = A.album_id and T.tag_subject_id = U.user_id "
+					+ " and TI.tag_photo_id in (select T1.tag_photo_id from tag_info T1 where rownum <= " + n + " )"
+					+ " order by TI.cont DESC, T.tag_photo_id ASC";
+
+			ResultSet rst = stmt.executeQuery(q);
+			// System.out.println(q);
+
+			String photoId_old = "";
+			PhotoInfo p = new PhotoInfo("", "", "", "", "");
+			TaggedPhotoInfo tp = new TaggedPhotoInfo(p);
+
+			while (rst.next()) {
+				String photoId = rst.getString(4);
+				String albumId = rst.getString(5);
+				String albumName = rst.getString(6);
+				String photoCaption = rst.getString(7);
+				String photoLink = rst.getString(8);
+				if (!photoId_old.equals(photoId)) {
+					if (photoId_old != "") {
+						this.photosWithMostTags.add(tp);
+					}
+					p = new PhotoInfo(photoId, albumId, albumName, photoCaption, photoLink);
+					tp = new TaggedPhotoInfo(p);
+					photoId_old = photoId;
+
+				}
+				long userId = rst.getLong(1);
+				String fn = rst.getString(2);
+				String ln = rst.getString(3);
+				tp.addTaggedUser(new UserInfo(userId, fn, ln));
+			}
+			this.photosWithMostTags.add(tp);
+			stmt.executeUpdate("drop view tag_info");
+
+			rst.close();
+			stmt.close();
+		} catch (SQLException err) {
+			System.err.println(err.getMessage());
+		}
+
+	}
