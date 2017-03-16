@@ -9,6 +9,7 @@ VALUETYPE Bnode_inner::merge(Bnode_inner* rhs, int parent_idx) {
 
     // TODO: Implement this
 
+
     return -1;
 }
 
@@ -18,8 +19,21 @@ VALUETYPE Bnode_inner::redistribute(Bnode_inner* rhs, int parent_idx) {
     assert(parent_idx < parent->getNumValues());
 
     // TODO: Implement this
+    int total_num = num_values + rhs->num_values;
+    int redis_num = total_num/2 - num_values;
 
-    return -1;
+    VALUETYPE parent_val = parent->get(parent_idx);
+    insert(parent_val);
+
+    for(int i = 0 ; i< redis_num-1 ; i++)
+    {
+        VALUETYPE borrowVal = rhs->get(i);
+        insert(borrowVal);
+        rhs->remove(borrowVal);
+    }
+    VALUETYPE retVal = rhs->get(0);
+    rhs->remove(retVal);
+    return retVal;
 }
 
 
