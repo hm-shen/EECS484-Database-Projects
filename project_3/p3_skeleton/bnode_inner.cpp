@@ -8,9 +8,22 @@ VALUETYPE Bnode_inner::merge(Bnode_inner* rhs, int parent_idx) {
     assert(rhs->num_values > 0);
 
     // TODO: Implement this
+    assert(num_values + rhs->getNumValues() <= BTREE_FANOUT - 1);
+    VALUETYPE retVal = parent->get(parent_idx);
 
-
-    return -1;
+    insert(retVal);
+    //merge the value
+    for(int i = 0; i < rhs->getNumValues(); i++)
+        insert(rhs->get(i)); 
+    //merge the children 
+    for(int i = 0 ; i < rhs->getNumChildren(); i++)
+    {
+        insert(rhs->getChild(i),num_children);
+        rhs->getChild(i)->parent = this;  //还是用下面的？
+        // children[num_children-1]->parent = this;
+    }
+    rhs->clear();
+    return retVal;
 }
 
 VALUETYPE Bnode_inner::redistribute(Bnode_inner* rhs, int parent_idx) {
@@ -27,12 +40,25 @@ VALUETYPE Bnode_inner::redistribute(Bnode_inner* rhs, int parent_idx) {
 
     for(int i = 0 ; i< redis_num-1 ; i++)
     {
+        //change the value of current node and right node
         VALUETYPE borrowVal = rhs->get(i);
         insert(borrowVal);
-        rhs->remove(borrowVal);
+        rhs->remove_value(borrowVal);
+
+        //change the children of current node and right node
+        insert(rhs->getChild(i),num_children);
+        //rhs->getChild(i)->parent = this;    
+        children[num_children-1]->parent = this; //能访问到么? 和上面那个用哪个?
+        rhs->remove_child(i);
     }
+
     VALUETYPE retVal = rhs->get(0);
-    rhs->remove(retVal);
+    rhs->remove_value(retVal);
+
+    // change the count of the children num
+    //num_children = num_children + (redis_num-1);
+    //rhs->num_children = rhs->num_children - (redis_num-1);
+
     return retVal;
 }
 

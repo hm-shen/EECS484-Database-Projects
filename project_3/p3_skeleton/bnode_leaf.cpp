@@ -28,9 +28,9 @@ VALUETYPE Bnode_leaf::merge(Bnode_leaf* rhs) {
 
 VALUETYPE Bnode_leaf::redistribute(Bnode_leaf* rhs) {
     // TODO: Implement this
-    assert( num_values < BTREE_LEAF_SIZE/2)
+    assert( num_values < BTREE_LEAF_SIZE/2);
     assert( rhs->num_values > 0);
-    assert( rhs->num_values >= BTREE_LEAF_SIZE/2)  //satisfy the condition of redistribution
+    assert( rhs->num_values >= BTREE_LEAF_SIZE/2);  //satisfy the condition of redistribution
     
     int total_num = num_values + rhs->num_values;
     int redis_num = total_num/2 - num_values;
