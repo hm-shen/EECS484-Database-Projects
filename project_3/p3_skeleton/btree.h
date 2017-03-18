@@ -75,25 +75,23 @@ public:
     //          This may assert();
     bool isValid();
 
+    // for help to implement by ourselves
+    int find_value_at(VALUETYPE value) const;
+
+    Bnode_leaf* find_leaf_node(Bnode, value);
+    void split_leaf_insert(Bnode,  value);
+    void inner_node_insert(Bnode_inner, value, child);
+    void inner_node_delete(Bnode_inner, value);
+    bnode_inner* get_nonfirst_ancestor(bonde_inner, value); // gets the first ancestor where value is not
+                                                          // less than all of the ancestors value
+    bnode_inner* get_common_ancestor(left, right);
+
 
     friend std::ostream& operator<< (std::ostream& os, const Btree& tree);
 
 private:
     Bnode* root;
     int size;
-
-    /*
-    Some suggestions of member functions you may or may not might want to create
-
-    Bnode_leaf find_leaf_node(Bnode, value)
-    void split_leaf_insert(Bnode,  value)
-    void inner_node_insert(Bnode_inner, value, child)
-    void inner_node_delete(Bnode_inner, value)
-    bnode_inner get_nonfirst_ancestor(bonde_inner, value) // gets the first ancestor where value is not
-                                                          // less than all of the ancestors value
-    bnode_inner get_common_ancestor(left, right)
-
-    */
 };
 
 

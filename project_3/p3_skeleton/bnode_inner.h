@@ -58,6 +58,14 @@ public:
     //          output_val should be the value that needs to be inserted in the parent node
     Bnode_inner* split(VALUETYPE& output_val, VALUETYPE insert_value, Bnode* insert_node);
 
+    ///====================================================================
+    /// for help 
+    ///
+    // returns the first index such that values[index] > value 
+    int find_idx(VALUETYPE val);
+
+    //=====================================================================
+
     //
     // ====================== Given implementations ========================
     //                           (do not change)
@@ -90,6 +98,7 @@ public:
     Bnode* getChild(int idx) const { assert(idx >= 0); assert(idx < num_children); return children[idx]; }
     // Retrives a value at a given index
     VALUETYPE get(int idx) const { assert(idx >= 0); assert(idx < num_values); return values[idx]; }
+    
     // Returns the number of values in this node
     int getNumValues() const { return num_values; }
     // Returns the number of children in this node

@@ -3,6 +3,17 @@
 
 using namespace std;
 
+//===================================================
+// for help
+int Bnode_inner::find_idx(VALUETYPE val){
+    int retVal;
+    for (retVal = 0; retVal < num_values; ++retVal)
+        if (values[retVal]->value > val) break;
+    return retVal;
+}
+
+//===================================================
+//
 VALUETYPE Bnode_inner::merge(Bnode_inner* rhs, int parent_idx) {
     assert(rhs->parent == parent); // can only merge siblings
     assert(rhs->num_values > 0);
