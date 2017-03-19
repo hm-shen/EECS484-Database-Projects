@@ -8,7 +8,8 @@ using namespace std;
 int Bnode_inner::find_idx(VALUETYPE val){
     int retVal;
     for (retVal = 0; retVal < num_values; ++retVal)
-        if (values[retVal]->value > val) break;
+//        if (values[retVal]->value > val) break; //MODIFIED
+        if (values[retVal] > val) break;
     return retVal;
 }
 

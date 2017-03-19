@@ -198,13 +198,45 @@ int main() {
     //freopen(filename.c_str(),"w",stdout); //Comment out if you want to write to a file. You should to set the
                                             //values in constants.h to create the corresponding output
     
-    small_test();
-    splitTestFromSpec();
-    testForRedistribution();
-    large_test1();
-    large_test2();
-    stress_insert(500);
-    stress_insert_delete(500);
+//    small_test();
+//    splitTestFromSpec();
+//    testForRedistribution();
+//    large_test1();
+//    large_test2();
+//    stress_insert(500);
+//    stress_insert_delete(500);
+
+    Btree btree;
+    cout << btree << endl;
+    btree.insert(0);
+    cout << btree << endl;
+    btree.insert(2);
+    cout << btree << endl;
+    btree.insert(3);
+    cout << btree << endl;
+    btree.insert(8);
+    cout << btree << endl;
+    btree.insert(9);
+    cout << btree << endl;
+    btree.insert(4);
+    cout << btree << endl;
+    btree.insert(5);
+    cout << btree << endl;
+    btree.insert(6);
+    cout << btree << endl;
+    assert(btree.isValid());
+    
+
+//		Bnode_leaf leaf1;
+//		Bnode_leaf leaf2;
+//		leaf1.insert(1);
+//		leaf2.insert(3);
+//		leaf2.insert(4);
+//		leaf1.next = &leaf2;
+//		leaf2.prev = &leaf1;
+//		cout<<leaf1<<endl;
+//		leaf1.print();
+		
     
     return 0;
 }

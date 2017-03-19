@@ -5,9 +5,12 @@ using namespace std;
 Bnode_leaf::~Bnode_leaf() {
     // Remember to deallocate memory!!
     //bnode class has Bnode_inner* parent. do we need to deallocate that?
-    delete next;
-    delete prev;
-    delete [] values;
+    // delete next;
+    // delete prev;
+    // delete [] values;
+		next = NULL;
+		prev = NULL;
+		*values = NULL;
 }
 
 VALUETYPE Bnode_leaf::merge(Bnode_leaf* rhs) {
@@ -59,13 +62,18 @@ Bnode_leaf* Bnode_leaf::split(VALUETYPE insert_value) {
     if(save) save->prev = split_node;
 
     //split the node evenly
-    for(int i = 0; i <= (num_values/2-1); i++)
-        split_node->insert(get(i));
-    for(int i = num_values/2; i < num_values; i++)
-        remove(get(i));
+//     for(int i = 0; i <= (num_values/2-1); i++)
+//         split_node->insert(get(i));
+//     for(int i = num_values/2; i < num_values; i++)
+//         remove(get(i));
+
+     for(int i = 0; i <= (num_values/2-1); i++)
+         split_node->insert(this->get(i+num_values/2));
+     for(int i = num_values/2; i < num_values; i++)
+         remove(get(i));
 
     //insert the new value
-    if( insert_value > get((num_values/2)) )
+    if(insert_value > this->get((BTREE_LEAF_SIZE/2 - 1)))
     {split_node->insert(insert_value);}
     else
     {insert(insert_value);}

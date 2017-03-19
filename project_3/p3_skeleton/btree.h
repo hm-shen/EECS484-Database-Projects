@@ -78,13 +78,13 @@ public:
     // for help to implement by ourselves
     int find_value_at(VALUETYPE value) const;
 
-    Bnode_leaf* find_leaf_node(Bnode, value);
-    void split_leaf_insert(Bnode,  value);
-    void inner_node_insert(Bnode_inner, value, child);
-    void inner_node_delete(Bnode_inner, value);
-    bnode_inner* get_nonfirst_ancestor(bonde_inner, value); // gets the first ancestor where value is not
-                                                          // less than all of the ancestors value
-    bnode_inner* get_common_ancestor(left, right);
+//     Bnode_leaf* find_leaf_node(Bnode* Bnode, VALUETYPE value);
+//     void split_leaf_insert(Bnode* Bnode,  VALUETYPE value);
+    void inner_node_insert(Bnode** nodepointer, VALUETYPE value, Bnode** childentry, VALUETYPE& parent_val);
+//    void inner_node_delete(Bnode_inner* Bnode_inner, VALUETYPE value);
+//    bnode_inner* get_nonfirst_ancestor(Bnode_inner* bonde_inner, VALUETYPE value); // gets the first ancestor where value is not
+//                                                          // less than all of the ancestors value
+//    bnode_inner* get_common_ancestor(Bnode_inner* left, Bnode_inner* right);
 
 
     friend std::ostream& operator<< (std::ostream& os, const Btree& tree);
@@ -92,6 +92,8 @@ public:
 private:
     Bnode* root;
     int size;
+    Bnode_leaf* search_larger(VALUETYPE value, int* out_idx);
+    Data* getNext(Bnode_leaf* leaf, int* idx);
 };
 
 
