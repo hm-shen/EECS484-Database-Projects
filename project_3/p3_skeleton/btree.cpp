@@ -118,16 +118,20 @@ vector<Data*> Btree::search_range(VALUETYPE begin, VALUETYPE end) {
     // TODO: Implement this
     assert(root);
     Bnode_leaf *leaf;
-    int *idx = 0;
-    leaf = this->search_larger(begin, idx);
-    Data* temp_data = leaf->getData(*idx);
-
-    while ((temp_data->value <= end) && (temp_data != nullptr))
+    int idx = 0;
+    bool sig = false;
+    leaf = this->search_larger(begin, &idx);
+    if (leaf != nullptr)
     {
-        returnValues.push_back(temp_data);
-        temp_data = this->getNext(&leaf,idx);
-    } 
-//    this->search(begin);
+        Data* temp_data = leaf->getData(idx);
+
+        while ((sig == false) && (temp_data->value <= end))
+        {
+            returnValues.push_back(temp_data);
+            temp_data = this->getNext(&leaf,&idx);
+            if (temp_data == nullptr) {sig = true;}
+        } 
+    }
     return returnValues;
 }
 
@@ -479,7 +483,6 @@ Bnode_leaf* Btree::search_larger(VALUETYPE value, int* out_idx) {
     }
 
     // reached past the possible values - not here
-//    cout<<"Cannot find it. Bug!"<<endl;
     return nullptr;
 }
 
