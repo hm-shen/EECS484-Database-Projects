@@ -201,31 +201,77 @@ int main() {
     //freopen(filename.c_str(),"w",stdout); //Comment out if you want to write to a file. You should to set the
                                             //values in constants.h to create the corresponding output
     
-    small_test();
+//    small_test();
 //    splitTestFromSpec();
 //    testForRedistribution();
 //    large_test1();
 //    large_test2();
-//   stress_insert(500);
-//    stress_insert_delete(500);
+//    stress_insert(500);
+//      stress_insert_delete(500);
     
-//    Btree btree;
-//    cout << btree << endl;
-//    btree.insert(0);
-//    btree.insert(2);
-//    btree.insert(3);
-//    cout << btree << endl;
-//    btree.remove(0);
-//    cout << btree << endl;
-//    btree.remove(2);
-//    cout << btree << endl;
-//    btree.insert(2);
-//    cout << btree << endl;
-//    btree.insert(0);
-//    cout << btree << endl;
-//    btree.remove(2);
-//    cout << btree << endl;
-//    assert(btree.isValid());
+    cout << "LARGE TEST2: " << endl;
+    Btree btree;
+    btree.insert(1);
+    btree.insert(2);
+    btree.insert(3);
+    btree.insert(4);
+    btree.insert(6);
+    btree.insert(8);
+    btree.insert(13);
+    btree.insert(15);
+    btree.insert(17);
+    cout << btree << endl;
+    btree.insert(33);
+    cout << btree << endl;
+    btree.remove(13);
+    cout << btree << endl;
+    btree.remove(3);
+    cout << btree << endl;
+    
+    btree.insert(10);
+    cout << btree << endl;
+    btree.insert(7);
+    
+    cout << btree << endl;
+    btree.remove(8);
+    cout << btree << endl;
+    
+    btree.remove(6);
+    cout << btree << endl;
+    btree.insert(18);
+    cout << btree << endl;
+    btree.insert(19);
+    cout << btree << endl;
+    btree.remove(17);
+    cout << btree << endl;
+    btree.insert(20);
+    cout << btree << endl;
+    btree.insert(34);
+    cout << btree << endl;
+    
+    btree.insert(11);
+    cout << btree << endl;
+    btree.insert(12);
+    cout << btree << endl;
+    btree.insert(17);
+    cout << btree << endl;
+    
+    btree.insert(13);
+    cout << btree << endl;
+    
+    btree.remove(7);
+    cout << btree << endl;
+    btree.remove(2);
+    cout << btree << endl;
+    cout << "###########################" << endl;
+    
+    assert(btree.isValid());
+    vector<Data*> range = btree.search_range(1,5); 
+    cout<<"haha"<<endl;
+    for (int i = 0; i < range.size(); ++i)
+    {
+        cout<<range[i]->value<<endl;
+    }
 
     return 0;
 }

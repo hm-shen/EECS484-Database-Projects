@@ -94,7 +94,7 @@ VALUETYPE Bnode_inner::redistribute(Bnode_inner* rhs, int parent_idx) {
 //        VALUETYPE borrowVal = rhs->get(i);
         VALUETYPE borrowVal = rhs->get(0);
         this->insert(borrowVal);
-        rhs->remove_value(borrowVal);
+        rhs->remove_value(0);
 
         //change the children of current node and right node
 //        this->insert(rhs->getChild(i),num_children);
@@ -133,7 +133,7 @@ VALUETYPE Bnode_inner::redistributeLeft(Bnode_inner* lhs, int parent_idx)
         //change the value of current node and right node
         VALUETYPE borrowVal = lhs->get(lhs->getNumValues()-1);
         this->insert(borrowVal);
-        lhs->remove_value(borrowVal);
+        lhs->remove_value(lhs->getNumValues()-1);
 
         //change the children of current node and right node
         this->insert(lhs->getChild(lhs->getNumChildren()-1),0);

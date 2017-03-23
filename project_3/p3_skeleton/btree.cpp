@@ -117,16 +117,17 @@ vector<Data*> Btree::search_range(VALUETYPE begin, VALUETYPE end) {
     std::vector<Data*> returnValues;
     // TODO: Implement this
     assert(root);
-    Bnode_leaf* leaf;
-    int *idx = NULL;
+    Bnode_leaf *leaf;
+    int *idx = 0;
     leaf = this->search_larger(begin, idx);
     Data* temp_data = leaf->getData(*idx);
 
-    while (temp_data->value <= end)
+    while ((temp_data->value <= end) && (temp_data != nullptr))
     {
         returnValues.push_back(temp_data);
-        temp_data = this->getNext(leaf,idx);
+        temp_data = this->getNext(&leaf,idx);
     } 
+//    this->search(begin);
     return returnValues;
 }
 
@@ -176,9 +177,7 @@ void Btree::node_insert(Bnode** nodepointer,VALUETYPE value ,Bnode** childentry,
         Bnode_leaf* curnodelf = dynamic_cast<Bnode_leaf*>(*nodepointer);
         //if L has space
         if(curnodelf->getNumValues() < BTREE_LEAF_SIZE){
-            cout<<"hahaha"<<curnodelf->getNumValues()<<endl;
             curnodelf->insert(value);
-            cout<<"bababa"<<curnodelf->getNumValues()<<endl;
             *childentry = nullptr;
             parent_val = 0;
             return;
@@ -269,7 +268,7 @@ void Btree::node_delete(Bnode** nodepointer, VALUETYPE value, Bnode** parentpoin
                 else if ((lhs != nullptr) && (lhs->getNumValues() > (BTREE_FANOUT - 1)/2)) 
                 {
                     // redis with left
-                    VALUETYPE parVal = curnode->redistributeLeft(rhs, curnodeId-1);
+                    VALUETYPE parVal = curnode->redistributeLeft(lhs, curnodeId-1);
                     curParent->replace_value(parVal, curnodeId-1);
                     *parentpointer = nullptr;
                     oldchildentry = 0;
@@ -325,9 +324,9 @@ void Btree::node_delete(Bnode** nodepointer, VALUETYPE value, Bnode** parentpoin
             // redis or merge
             Bnode_inner* curParent = curnodelf->parent;
             int curnodelfId = curParent->find_child(curnodelf);
-            curnodelf->remove(value);  // delete corresponding value from tree
             VALUETYPE curMax = curnodelf->get(curnodelf->getNumValues()-1);
             VALUETYPE curMin = curnodelf->get(0);
+            curnodelf->remove(value);  // delete corresponding value from tree
             if ((curnodelf->next != nullptr) && ((curnodelf->next)->getNumValues() >= BTREE_LEAF_SIZE/2 + 1) && ((curnodelf->next)->getNumValues() > 0))
             {
                 // redis on right
@@ -484,21 +483,22 @@ Bnode_leaf* Btree::search_larger(VALUETYPE value, int* out_idx) {
     return nullptr;
 }
 
-Data* Btree::getNext(Bnode_leaf* leaf, int* idx)
+Data* Btree::getNext(Bnode_leaf** leaf, int* idx)
 {
     
-    assert((*idx >= 0) && (*idx < leaf->getNumValues()));
-    if ((*idx == (leaf->getNumValues()-1)) && (leaf->next != NULL))
+    assert((*idx >= 0) && (*idx < (*leaf)->getNumValues()));
+    if ((*idx == ((*leaf)->getNumValues()-1)) && ((*leaf)->next != NULL))
     { 
-        leaf = leaf->next;
+        *leaf = (*leaf)->next;
         *idx = 0;
-        return leaf->getData(*idx);
+        return (*leaf)->getData(*idx);
     }
-    else if (leaf->next != NULL)
+    else if (*idx < ((*leaf)->getNumValues()-1))  //if //(leaf->next != NULL)
     {
         *idx = *idx + 1;
-        return leaf->getData(*idx);
+        return (*leaf)->getData(*idx);
     }
+    return nullptr;
 }
 
 

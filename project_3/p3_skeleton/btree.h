@@ -93,7 +93,7 @@ private:
     Bnode* root;
     int size;
     Bnode_leaf* search_larger(VALUETYPE value, int* out_idx);
-    Data* getNext(Bnode_leaf* leaf, int* idx);
+    Data* getNext(Bnode_leaf** leaf, int* idx);
 };
 
 
