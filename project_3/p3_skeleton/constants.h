@@ -37,17 +37,17 @@ struct Data {
 };
 
 // ARRAY CONSTANTS
- const int BTREE_FANOUT      = 3;    // Fanout of each node in our Btree
-                                     // Guarentees: This will never be < 3
-                                     //             Will always be odd
- const int BTREE_LEAF_SIZE   = 2;    // Size of leaf nodes (how many data entries each leaf can hold)
-                                     // Guarentees: This will never be < 2
-                                     //             Will always be even
+const int BTREE_FANOUT      = 3;    // Fanout of each node in our Btree
+                                    // Guarentees: This will never be < 3
+                                    //             Will always be odd
+const int BTREE_LEAF_SIZE   = 2;    // Size of leaf nodes (how many data entries each leaf can hold)
+                                    // Guarentees: This will never be < 2
+                                    //             Will always be even
 
-//const int BTREE_FANOUT      = 3;    // Fanout of each node in our Btree
-//                                    // Guarentees: This will never be < 3
-//                                    //             Will always be odd
-//const int BTREE_LEAF_SIZE   = 6;    // Size of leaf nodes (how many data entries each leaf can hold)
-//                                    // Guarentees: This will never be < 2
-//                                    //             Will always be even
+// const int BTREE_FANOUT      = 3;    // Fanout of each node in our Btree
+//                                     // Guarentees: This will never be < 3
+//                                     //             Will always be odd
+// const int BTREE_LEAF_SIZE   = 4;    // Size of leaf nodes (how many data entries each leaf can hold)
+//                                     // Guarentees: This will never be < 2
+//                                     //             Will always be even
 #endif

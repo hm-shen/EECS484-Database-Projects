@@ -5,6 +5,9 @@
 #include <cstdlib>
 #include <fstream>
 
+////
+#include<ctime>
+////
 using namespace std;
 
 
@@ -177,18 +180,25 @@ void stress_insert(int itr) {
 void stress_insert_delete(int itr) {
     // Stress-testing
     Btree btree;
+    srand((int)time(0));
     // insert a bunch of times - then delete it
     for (int i = 0; i < itr; ++i) {
         int num = rand() % itr*20;
         btree.insert(num);
+        if (i % 3 == 0) { btree.remove(rand() % itr*3); }
         assert(btree.isValid());
+        vector<Data*> result = btree.search_range(0,20000000);
+        assert(btree.getSize() == result.size());
     }
     
     
     for (int i = 0; i < itr; ++i) {
         int num = rand() % itr*20;
+        if (i % 3 == 0) { btree.insert(rand() % itr*3); }
         btree.remove(num);
         assert(btree.isValid());
+        vector<Data*> result = btree.search_range(0,20000000);
+        assert(btree.getSize() == result.size());
     }
 }
 
@@ -203,9 +213,11 @@ int main() {
     testForRedistribution();
     large_test1();
     large_test2();
-    stress_insert(500);
-    stress_insert_delete(500);
-    
+    for (int i = 0; i < 100; ++i)
+    {
+        stress_insert_delete(500);
+    }
+//    
 //    cout << "LARGE TEST2: " << endl;
 //    Btree btree;
 //    btree.insert(1);

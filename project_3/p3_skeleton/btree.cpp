@@ -42,8 +42,9 @@ bool Btree::insert(VALUETYPE value) {
 	  if (result) 
 		{
         this->size ++;
+        return true;
 		}
-    return result;
+    return false;
 }
 
 bool Btree::remove(VALUETYPE value) 
@@ -69,13 +70,13 @@ bool Btree::remove(VALUETYPE value)
 	      if (result == false) 
 		    {
             this->size --;
+            return true;
 		    }
-        return result;
+        return false;
     }
     else if ((deleteEntry == this->root) && (size > BTREE_LEAF_SIZE))
     {
 				Bnode_inner *root_copy = dynamic_cast<Bnode_inner*>(root);
-//        root_copy->remove_child(root_copy->find_value(deleteVal)+1);
         root_copy->remove_value(root_copy->find_value(deleteVal));
         if (root_copy->getNumValues() == 0)
         {
@@ -90,8 +91,9 @@ bool Btree::remove(VALUETYPE value)
 	      if (result == false) 
 		    {
             this->size --;
+            return true;
 		    }
-        return result;
+        return false;
     }
     else if ((deleteEntry == this->root) && (size <= BTREE_LEAF_SIZE))
     {
@@ -101,16 +103,18 @@ bool Btree::remove(VALUETYPE value)
 	      if (result == false) 
 		    {
             this->size --;
+            return true;
 		    }
-        return result;
+        return false;
     }
 
     bool result = search(value);
 	  if (result == false) 
 		{
         this->size --;
+        return true;
 		}
-    return result;
+    return false;
 }
 
 vector<Data*> Btree::search_range(VALUETYPE begin, VALUETYPE end) {
@@ -220,9 +224,7 @@ void Btree::node_delete(Bnode** nodepointer, VALUETYPE value, Bnode** parentpoin
         {
             // child node are deleted
             curnode = dynamic_cast<Bnode_inner*>(*parentpointer);
-//            int deleteidx = curnode->find_idx(oldchildentry);
             int deleteidx = curnode->find_value(oldchildentry);
-//            curnode->remove_child(deleteidx+1);  // delete corresponding child from tree
             curnode->remove_value(deleteidx);  // delete corresponding value from tree
             if (curnode->getNumValues() >= (BTREE_FANOUT - 1)/2)
             {
@@ -238,8 +240,8 @@ void Btree::node_delete(Bnode** nodepointer, VALUETYPE value, Bnode** parentpoin
                 Bnode_inner* curParent = curnode->parent;
                 int curnodeId = curParent->find_child(curnode);
 
-                Bnode_inner* rhs;
-                Bnode_inner* lhs;
+                Bnode_inner *rhs = nullptr;
+                Bnode_inner *lhs = nullptr;
                
                 if (curnodeId == curParent->getNumChildren()-1)
                 {
@@ -389,7 +391,8 @@ void Btree::node_delete(Bnode** nodepointer, VALUETYPE value, Bnode** parentpoin
                 }
                 VALUETYPE parRem = curnodelf->merge(rhs);
                 Bnode_inner* parent = rhs->parent;
-                parRem = parent->get((parent->find_parIdx(parRem)));  /////BUGBUGWARNING
+                //parRem = parent->get((parent->find_parIdx(parRem)));  /////BUGBUGWARNING
+                parRem = parent->get((parent->find_idx(value)));  /////BUGBUGWARNING
 						    parent->remove_child(parent->find_child(rhs));
                 *parentpointer = parent;
                 oldchildentry = parRem;

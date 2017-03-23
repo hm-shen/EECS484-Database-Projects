@@ -35,11 +35,8 @@ VALUETYPE Bnode_leaf::merge(Bnode_leaf* rhs) {
 VALUETYPE Bnode_leaf::mergeLeft(Bnode_leaf* lhs) {
     assert(num_values + lhs->getNumValues() < BTREE_LEAF_SIZE);
     assert(lhs->num_values > 0);
-//    Bnode_inner *rhsParent = this->parent;
-//    int lhsId = rhsParent->find_child(this);
-//    VALUETYPE retVal = rhsParent->get(lhsId-1);
-//    VALUETYPE retVal = this->getT(0);
-      VALUETYPE retVal = 0;
+    VALUETYPE retVal = 0;
+//    VALUETYPE retVal = this->get(0);
     
     Bnode_leaf* save = next;
     lhs->next = save;

@@ -7,10 +7,10 @@ main: bnode_inner.o bnode_leaf.o bnode.o btree.o impl.o mainfile.o
 mainfile.o: mainfile.cpp constants.h
 	g++ -c $(CXXFLAGS) mainfile.cpp
 
-bnode_inner.o: bnode_inner.h bnode_inner.cpp
+bnode_inner.o: bnode_inner.h bnode_inner.cpp constants.h
 	g++ -c $(CXXFLAGS) bnode_inner.cpp
 
-bnode_leaf.o: bnode_leaf.h bnode_leaf.cpp 
+bnode_leaf.o: bnode_leaf.h bnode_leaf.cpp constants.h
 	g++ -c $(CXXFLAGS) bnode_leaf.cpp
 
 bnode.o: bnode.h bnode.cpp constants.h
