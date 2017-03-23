@@ -37,16 +37,19 @@ public:
     // Inputs:  The other leaf node this node should be merged with
     // Output:  The value that should be removed from the parent node
     VALUETYPE merge(Bnode_leaf* rhs);
+    VALUETYPE mergeLeft(Bnode_leaf* rhs);
 
     // Redistribute this object with rhs
     // Inputs:  The other leaf node this node should be redistirubted with
     // Output:  The value that was (or should be) written to the parent node
     VALUETYPE redistribute(Bnode_leaf* rhs); // TODO: Implement this
+    VALUETYPE redistributeLeft(Bnode_leaf* rhs); 
 
     // Split this object and applcate another bnode_leaf
     // Inputs:  The value that should be inserted into this node that caused this split
     // Output:  A new heap-allocated leaf node that was created due to this split (ownership should be transferred)
     Bnode_leaf* split(VALUETYPE insert_value); // TODO: Implement this
+//    VALUETYPE getT(int index) { return values[index]->value; }
 
 
     //
@@ -76,8 +79,15 @@ public:
     // Removes all the internal data
     // Memory is not deallocated
     //      -- Use this with caution
-    void clear() { num_values = 0; }
-
+    void clear() 
+		{ 	
+//				if (this->parent != nullptr) 
+//				{ 		
+//						Bnode_inner* parent = this->parent;
+//						parent->remove_child(parent->find_child(this));
+//				}
+				num_values = 0; 
+		}
 
     Bnode_leaf*     next;       // pointer to next leaf node
     Bnode_leaf*     prev;       // pointer to previous leaf node
@@ -91,7 +101,6 @@ private:
     Data*       values[BTREE_LEAF_SIZE];    // array of "value" or data
     int         num_values;                 // number of valid values in the above array
                                             // -- ENSURE: Only the first num_values cells are valid
-
 };
 
 

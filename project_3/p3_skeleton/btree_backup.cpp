@@ -54,12 +54,13 @@ bool Btree::remove(VALUETYPE value)
     VALUETYPE deleteVal= 0;
     node_delete(&root, value, &deleteEntry, deleteVal);
     Bnode_inner* test = dynamic_cast<Bnode_inner*>(root);
-    if ((deleteEntry == this->root) && (size == BTREE_LEAF_SIZE) && (test != nullptr))
+    if ((deleteEntry == this->root) && (size = BTREE_LEAF_SIZE) && (test != nullptr))
     {
 				Bnode_inner *root_copy = dynamic_cast<Bnode_inner*>(root);
-//        root_copy->remove_child(root_copy->find_value(deleteVal)+1);
+        root_copy->remove_child(root_copy->find_value(deleteVal)+1);
         root_copy->remove_value(root_copy->find_value(deleteVal));
         Bnode_leaf *temp = dynamic_cast<Bnode_leaf*>(root_copy->getChild(0));
+        cout<<temp->get(0)<<endl;
         root = temp;
         root_copy->clear();
         deleteEntry = nullptr;
@@ -75,14 +76,8 @@ bool Btree::remove(VALUETYPE value)
     else if ((deleteEntry == this->root) && (size > BTREE_LEAF_SIZE))
     {
 				Bnode_inner *root_copy = dynamic_cast<Bnode_inner*>(root);
-//        root_copy->remove_child(root_copy->find_value(deleteVal)+1);
-        root_copy->remove_value(root_copy->find_value(deleteVal));
-        if (root_copy->getNumValues() == 0)
-        {
-            root = root_copy->getChild(0);
-            root_copy->remove_child(0);
-            root->parent = nullptr;
-        }
+        root_copy->remove_value(deleteVal);
+        root_copy->remove_child(root_copy->find_value(deleteVal)+1);
         deleteEntry = nullptr;
         deleteVal = 0;
 
@@ -170,16 +165,22 @@ void Btree::node_insert(Bnode** nodepointer,VALUETYPE value ,Bnode** childentry,
                 //insert child tree and value in split function. change the parent_val in split function.
                 *childentry = curnode->split(parent_val,insertval,*childentry);  
             }
+
+//            if(curnode == this->root){
+//                Bnode* new_root = new Bnode_inner;
+//                new_root->insert(parent_val); //insert value after split into parent node
+//                new_root->insert(childentry); //insert right tree
+//                new_root->insert(curnode); //insert left tree
+//            }
         }
     }
     else{
         Bnode_leaf* curnodelf = dynamic_cast<Bnode_leaf*>(*nodepointer);
         //if L has space
         if(curnodelf->getNumValues() < BTREE_LEAF_SIZE){
-            cout<<"hahaha"<<curnodelf->getNumValues()<<endl;
             curnodelf->insert(value);
-            cout<<"bababa"<<curnodelf->getNumValues()<<endl;
             *childentry = nullptr;
+//            parent_val = nullptr;
             parent_val = 0;
             return;
         }
@@ -213,13 +214,16 @@ void Btree::node_delete(Bnode** nodepointer, VALUETYPE value, Bnode** parentpoin
             // root does not merge or split.
             return;
         }
+        else if (*parentpointer != *nodepointer)
+        {
+            // its sibiling should be modified.
+                        
+        }
         else 
         {
             // child node are deleted
-            curnode = dynamic_cast<Bnode_inner*>(*parentpointer);
-//            int deleteidx = curnode->find_idx(oldchildentry);
-            int deleteidx = curnode->find_value(oldchildentry);
-//            curnode->remove_child(deleteidx+1);  // delete corresponding child from tree
+            int deleteidx = curnode->find_idx(oldchildentry);
+            curnode->remove_child(deleteidx+1);  // delete corresponding child from tree
             curnode->remove_value(deleteidx);  // delete corresponding value from tree
             if (curnode->getNumValues() >= (BTREE_FANOUT - 1)/2)
             {
@@ -234,69 +238,61 @@ void Btree::node_delete(Bnode** nodepointer, VALUETYPE value, Bnode** parentpoin
                 // get sibiling
                 Bnode_inner* curParent = curnode->parent;
                 int curnodeId = curParent->find_child(curnode);
-
-                Bnode_inner* rhs;
-                Bnode_inner* lhs;
-               
-                if (curnodeId == curParent->getNumChildren()-1)
-                {
-                    // no sibiling on rhs --- choose left
-                    rhs = nullptr;
-                    lhs = dynamic_cast<Bnode_inner*>(curParent->getChild(curnodeId-1));
-                }
-                else if (curnodeId == 0)
-                {
-                    // no lhs --- 
-                    rhs = dynamic_cast<Bnode_inner*>(curParent->getChild(curnodeId+1));
-                    lhs = nullptr;
-                }
-                else 
-                {
-                    // both rhs and lhs exist
-                    rhs = dynamic_cast<Bnode_inner*>(curParent->getChild(curnodeId+1));
-                    lhs = dynamic_cast<Bnode_inner*>(curParent->getChild(curnodeId-1));
-                }
                 
+//                if (curnodeId == curParent->getNumChildren()-1)
+//                {
+//                    // no sibiling on rhs --- choose left
+//                    Bnode_inner* rhs = nullptr;
+//                    Bnode_inner* lhs = dynamic_cast<Bnode_inner*>(curParent->getChild(curnodeId-1));
+//                }
+//                else if (curnodeId == 0)
+//                {
+//                    // no lhs --- 
+//                    Bnode_inner* rhs = dynamic_cast<Bnode_inner*>(curParent->getChild(curnodeId+1));
+//                    Bnode_inner* lhs = nullptr;
+//                }
+//                else 
+//                {
+//                    // both rhs and lhs exist
+//                    Bnode_inner* rhs = dynamic_cast<Bnode_inner*>(curParent->getChild(curnodeId+1));
+//                    Bnode_inner* lhs = dynamic_cast<Bnode_inner*>(curParent->getChild(curnodeId-1));
+//                }
+                
+
+                Bnode_inner* rhs = dynamic_cast<Bnode_inner*>(curParent->getChild(curnodeId+1));
+                Bnode_inner* lhs = dynamic_cast<Bnode_inner*>(curParent->getChild(curnodeId-1));
                 if ((rhs != nullptr) && (rhs->getNumValues() > (BTREE_FANOUT - 1)/2))
                 {   
                     // redis with right
                     VALUETYPE parVal = curnode->redistribute(rhs, curnodeId);
                     curParent->replace_value(parVal,curnodeId);
-                    *parentpointer = nullptr;
-                    oldchildentry = 0;
                     return;
                 }
                 else if ((lhs != nullptr) && (lhs->getNumValues() > (BTREE_FANOUT - 1)/2)) 
                 {
                     // redis with left
-                    VALUETYPE parVal = curnode->redistributeLeft(rhs, curnodeId-1);
+                    VALUETYPE parVal = curnode->redistribute(rhs, curnodeId-1);
                     curParent->replace_value(parVal, curnodeId-1);
-                    *parentpointer = nullptr;
-                    oldchildentry = 0;
                     return;
                 }
                 else if (rhs != nullptr)
                 {
                     // merge with right
-                    Bnode_inner* parent = rhs->parent;
                     VALUETYPE parRemove = curnode->merge(rhs, curnodeId);
-                    int rhsId = parent->find_child(rhs);
-                    parRemove = parent->get(rhsId-1);
-						        parent->remove_child(parent->find_child(rhs));
-                    *parentpointer = parent;
-                    oldchildentry = parRemove;
+//                    curParent->remove_value(parRemove);
+//                    curParent->remove_child(curnodeId+1);
+                    *parentpointer = curParent->getChild(curnodeId+1);
+                    oldchildentry = curParent->get(parRemove);
                     return;
                 }
                 else if (lhs != nullptr)
                 {
                     // merge with left
-                    Bnode_inner* parent = curnode->parent;
-                    VALUETYPE parRemove = curnode->mergeLeft(lhs, curnodeId-1);
-                    int lhsId = parent->find_child(curnode);
-                    parRemove = parent->get(lhsId-1);
-						        parent->remove_child(parent->find_child(curnode));
-                    *parentpointer = parent;
-                    oldchildentry = parRemove;
+                    VALUETYPE parRemove = curnode->merge(lhs, curnodeId-1);
+//                    curParent->remove_value(parRemove);
+//                    curParent->remove_child(curnodeId);
+                    *parentpointer = curParent->getChild(curnodeId);
+                    oldchildentry = curParent->get(parRemove);
                     return;
                 }
             } 
@@ -326,24 +322,10 @@ void Btree::node_delete(Bnode** nodepointer, VALUETYPE value, Bnode** parentpoin
             Bnode_inner* curParent = curnodelf->parent;
             int curnodelfId = curParent->find_child(curnodelf);
             curnodelf->remove(value);  // delete corresponding value from tree
-            VALUETYPE curMax = curnodelf->get(curnodelf->getNumValues()-1);
-            VALUETYPE curMin = curnodelf->get(0);
             if ((curnodelf->next != nullptr) && ((curnodelf->next)->getNumValues() >= BTREE_LEAF_SIZE/2 + 1) && ((curnodelf->next)->getNumValues() > 0))
             {
                 // redis on right
                 Bnode_leaf* rhs = curnodelf->next;
-                // common ances?
-                if (rhs->parent != curnodelf->parent)
-                {
-                    // non-common ancestor
-                    Bnode_inner *comAn = get_common_ancestor(curnodelf->parent, rhs->parent);
-                    int ancId = common_ancestor_id(comAn, curMax, rhs->get(0)); 
-                    VALUETYPE parIdx = curnodelf->redistribute(rhs);
-                    comAn->replace_value(rhs->get(0), ancId);
-                    *parentpointer = nullptr;
-                    oldchildentry = 0;
-                    return;
-                }
                 VALUETYPE parIdx = curnodelf->redistribute(rhs);
                 curParent->replace_value(parIdx, curnodelfId);
                 *parentpointer = nullptr;
@@ -354,18 +336,6 @@ void Btree::node_delete(Bnode** nodepointer, VALUETYPE value, Bnode** parentpoin
             {
                 // redis on left
                 Bnode_leaf* lhs = curnodelf->prev;
-                // common ances?
-                if (lhs->parent != curnodelf->parent)
-                {
-                    // non-common ancestor
-                    Bnode_inner *comAn = get_common_ancestor(lhs->parent,curnodelf->parent);
-                    int ancId = common_ancestor_id(comAn, lhs->get(lhs->getNumValues()-1),curMin); 
-                    VALUETYPE parIdx = curnodelf->redistributeLeft(lhs);
-                    comAn->replace_value(curnodelf->get(0), ancId);
-                    *parentpointer = nullptr;
-                    oldchildentry = 0;
-                    return;
-                }
                 VALUETYPE parIdx = curnodelf->redistributeLeft(lhs);
                 curParent->replace_value(parIdx, curnodelfId-1);
                 *parentpointer = nullptr;
@@ -376,18 +346,10 @@ void Btree::node_delete(Bnode** nodepointer, VALUETYPE value, Bnode** parentpoin
             {
                 // merge on right
                 Bnode_leaf* rhs = curnodelf->next;
-                // common ances?
-                if (rhs->parent != curnodelf->parent)
-                {
-                    // non-common ancestor
-                    Bnode_inner *comAn = get_common_ancestor(curnodelf->parent, rhs->parent);
-                    int ancId = common_ancestor_id(comAn, curMax, rhs->get(0)); 
-                    comAn->replace_value((rhs->next)->get(0), ancId);
-                }
                 VALUETYPE parRem = curnodelf->merge(rhs);
                 Bnode_inner* parent = rhs->parent;
-                parRem = parent->get((parent->find_parIdx(parRem)));  /////BUGBUGWARNING
-						    parent->remove_child(parent->find_child(rhs));
+//                parRem = parent->get((parent->find_idx(parRem))-1);
+                parRem = parent->get((parent->find_parIdx(parRem)));
                 *parentpointer = parent;
                 oldchildentry = parRem;
                 return;
@@ -401,7 +363,6 @@ void Btree::node_delete(Bnode** nodepointer, VALUETYPE value, Bnode** parentpoin
                 Bnode_inner *parent = curnodelf->parent;
                 int lhsId = parent->find_child(curnodelf);
                 parRem = parent->get(lhsId-1);
-						    parent->remove_child(parent->find_child(curnodelf));
                 *parentpointer = parent;
                 oldchildentry = parRem;
 //                parent->remove_value(parRem);
@@ -480,7 +441,7 @@ Bnode_leaf* Btree::search_larger(VALUETYPE value, int* out_idx) {
     }
 
     // reached past the possible values - not here
-//    cout<<"Cannot find it. Bug!"<<endl;
+    cout<<"Cannot find it. Bug!"<<endl;
     return nullptr;
 }
 
@@ -500,26 +461,3 @@ Data* Btree::getNext(Bnode_leaf* leaf, int* idx)
         return leaf->getData(*idx);
     }
 }
-
-
-Bnode_inner* Btree::get_common_ancestor(Bnode_inner* left, Bnode_inner* right)
-{
-		assert(left != right);
-		Bnode_inner* leftp = left;
-		Bnode_inner* rightp = right;
-		while(leftp != rightp)
-		{		
-				leftp = leftp->parent;
-				rightp = rightp->parent;
-		}
-		return leftp;
-}
-
-int Btree::common_ancestor_id(Bnode_inner* comAn, VALUETYPE leftVal, VALUETYPE rightVal)
-{
-		int common_ancestor_id = comAn->find_idx(leftVal);
-		assert(comAn->get(common_ancestor_id) <= rightVal);
-		return common_ancestor_id;	
-}
-
-

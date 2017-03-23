@@ -43,6 +43,7 @@ public:
     //          happen through
     // Output: The value that was (or should be) removed to the parent node
     VALUETYPE merge(Bnode_inner* rhs, int parent_idx); //TODO: Write this
+    VALUETYPE mergeLeft(Bnode_inner* lhs, int parent_idx); //TODO: Write this
 
     // Redistributes this object with rhs
     // Inputs:  The other node that this object should be redistributed with
@@ -50,6 +51,7 @@ public:
     //          happen through
     // Output:  The value that was/should be written to the parent node
     VALUETYPE redistribute(Bnode_inner* rhs, int parent_idx); // TODO: Write this
+    VALUETYPE redistributeLeft(Bnode_inner* rhs, int parent_idx); // TODO: Write this
 
 
     // Splits this object with rhs
@@ -63,6 +65,7 @@ public:
     ///
     // returns the first index such that values[index] > value 
     int find_idx(VALUETYPE val);
+		int find_parIdx(VALUETYPE val);
 
     //=====================================================================
 

@@ -169,6 +169,7 @@ void stress_insert(int itr) {
     for (int i = 0; i < itr; ++i) {
         int num = rand() % itr*20;
         btree.insert(num);
+				cout<<i<<endl;
         assert(btree.isValid());
     }
 }
@@ -188,55 +189,43 @@ void stress_insert_delete(int itr) {
     for (int i = 0; i < itr; ++i) {
         int num = rand() % itr*20;
         btree.remove(num);
+        cout<<btree<<endl;
+        cout<<i<<endl;
         assert(btree.isValid());
     }
 }
 
 int main() {
-    std::string filename = std::string("expected_") + std::to_string(BTREE_FANOUT) + "_" + std::to_string(BTREE_LEAF_SIZE)
-    + ".out";
+//    std::string filename = std::string("expected_") + std::to_string(BTREE_FANOUT) + "_" + std::to_string(BTREE_LEAF_SIZE)
+ //   + ".out";
     //freopen(filename.c_str(),"w",stdout); //Comment out if you want to write to a file. You should to set the
                                             //values in constants.h to create the corresponding output
     
-//    small_test();
+    small_test();
 //    splitTestFromSpec();
 //    testForRedistribution();
 //    large_test1();
 //    large_test2();
-//    stress_insert(500);
+//   stress_insert(500);
 //    stress_insert_delete(500);
-
-    Btree btree;
-    cout << btree << endl;
-    btree.insert(0);
-    cout << btree << endl;
-    btree.insert(2);
-    cout << btree << endl;
-    btree.insert(3);
-    cout << btree << endl;
-    btree.insert(8);
-    cout << btree << endl;
-    btree.insert(9);
-    cout << btree << endl;
-    btree.insert(4);
-    cout << btree << endl;
-    btree.insert(5);
-    cout << btree << endl;
-    btree.insert(6);
-    cout << btree << endl;
-    assert(btree.isValid());
     
+//    Btree btree;
+//    cout << btree << endl;
+//    btree.insert(0);
+//    btree.insert(2);
+//    btree.insert(3);
+//    cout << btree << endl;
+//    btree.remove(0);
+//    cout << btree << endl;
+//    btree.remove(2);
+//    cout << btree << endl;
+//    btree.insert(2);
+//    cout << btree << endl;
+//    btree.insert(0);
+//    cout << btree << endl;
+//    btree.remove(2);
+//    cout << btree << endl;
+//    assert(btree.isValid());
 
-//		Bnode_leaf leaf1;
-//		Bnode_leaf leaf2;
-//		leaf1.insert(1);
-//		leaf2.insert(3);
-//		leaf2.insert(4);
-//		leaf1.next = &leaf2;
-//		leaf2.prev = &leaf1;
-//		cout<<leaf1<<endl;
-//		leaf1.print();
-		
-    
     return 0;
 }

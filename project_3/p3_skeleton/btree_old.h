@@ -52,6 +52,8 @@ public:
     //          Ownership is not transferred
     std::vector<Data*> search_range(VALUETYPE begin, VALUETYPE end);  // To implement
 
+    // 
+
     //
     // ====================== Given implementations ========================
     //                        (Do NOT change these)
@@ -75,25 +77,25 @@ public:
     //          This may assert();
     bool isValid();
 
-    // for help to implement by ourselves
-    int find_value_at(VALUETYPE value) const;
 
-//     Bnode_leaf* find_leaf_node(Bnode* Bnode, VALUETYPE value);
-//     void split_leaf_insert(Bnode* Bnode,  VALUETYPE value);
-    void node_insert(Bnode** nodepointer, VALUETYPE value, Bnode** childentry, VALUETYPE& parent_val);
-    void node_delete(Bnode** nodepointer, VALUETYPE value, Bnode** parentpointer, VALUETYPE& oldchildentry);
-		void node_inner_delete(Bnode_inner** nodepointer, VALUETYPE value, Bnode** parentpointer, VALUETYPE& oldchildentry);
-//    bnode_inner* get_nonfirst_ancestor(Bnode_inner* bonde_inner, VALUETYPE value); // gets the first ancestor where value is not
-//                              // less than all of the ancestors value
-    Bnode_inner* get_common_ancestor(Bnode_inner* left, Bnode_inner* right);
-		int common_ancestor_id(Bnode_inner* comAn, VALUETYPE leftVal, VALUETYPE rightVal);
     friend std::ostream& operator<< (std::ostream& os, const Btree& tree);
 
 private:
     Bnode* root;
     int size;
-    Bnode_leaf* search_larger(VALUETYPE value, int* out_idx);
-    Data* getNext(Bnode_leaf* leaf, int* idx);
+
+    /*
+    Some suggestions of member functions you may or may not might want to create
+
+    Bnode_leaf find_leaf_node(Bnode, value)
+    void split_leaf_insert(Bnode,  value)
+    void inner_node_insert(Bnode_inner, value, child)
+    void inner_node_delete(Bnode_inner, value)
+    bnode_inner get_nonfirst_ancestor(bonde_inner, value) // gets the first ancestor where value is not
+                                                          // less than all of the ancestors value
+    bnode_inner get_common_ancestor(left, right)
+
+    */
 };
 
 

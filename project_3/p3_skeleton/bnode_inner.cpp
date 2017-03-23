@@ -13,6 +13,17 @@ int Bnode_inner::find_idx(VALUETYPE val){
     return retVal;
 }
 
+int Bnode_inner::find_parIdx(VALUETYPE val)
+{
+    int retVal;
+    if (values[0] > val)
+    {
+        return 0;
+    }
+    for (retVal = 0; retVal < num_values; ++retVal)
+        if (values[retVal] > val) break;
+    return retVal-1;
+}
 //===================================================
 //
 VALUETYPE Bnode_inner::merge(Bnode_inner* rhs, int parent_idx) {
@@ -21,58 +32,143 @@ VALUETYPE Bnode_inner::merge(Bnode_inner* rhs, int parent_idx) {
 
     // TODO: Implement this
     assert(num_values + rhs->getNumValues() <= BTREE_FANOUT - 1);
-    VALUETYPE retVal = parent->get(parent_idx);
+    VALUETYPE retVal = (rhs->parent)->get(parent_idx);
 
-    insert(retVal);
+    this->insert(retVal);
     //merge the value
     for(int i = 0; i < rhs->getNumValues(); i++)
-        insert(rhs->get(i)); 
+        this->insert(rhs->get(i)); 
     //merge the children 
     for(int i = 0 ; i < rhs->getNumChildren(); i++)
     {
-        insert(rhs->getChild(i),num_children);
-        rhs->getChild(i)->parent = this;  //还是用下面的？
-        // children[num_children-1]->parent = this;
+        this->insert(rhs->getChild(i),this->num_children);
+        //rhs->getChild(i)->parent = this;  
+        this->children[num_children-1]->parent = this;
     }
     rhs->clear();
     return retVal;
 }
 
+VALUETYPE Bnode_inner::mergeLeft(Bnode_inner* lhs, int parent_idx) {
+    assert(lhs->parent == parent); // can only merge siblings
+    assert(lhs->num_values > 0);
+
+    // TODO: Implement this
+    assert(num_values + lhs->getNumValues() <= BTREE_FANOUT - 1);
+    VALUETYPE retVal = (this->parent)->get(parent_idx);
+
+    lhs->insert(retVal);
+    //merge the value
+    for(int i = 0; i < this->getNumValues(); i++)
+        lhs->insert(this->get(i)); 
+    //merge the children 
+    for(int i = 0 ; i < this->getNumChildren(); i++)
+    {
+        lhs->insert(this->getChild(i),lhs->num_children);
+        //(this->getChild(i))->parent = lhs;  
+        (lhs->children[lhs->num_children-1])->parent = lhs;
+    }
+    this->clear();
+    return retVal;
+}
+
+
 VALUETYPE Bnode_inner::redistribute(Bnode_inner* rhs, int parent_idx) {
-    assert(rhs->parent == parent); // inner node redistribution should only happen with siblings
+    assert(rhs->parent == parent); 
     assert(parent_idx >= 0);
     assert(parent_idx < parent->getNumValues());
 
     // TODO: Implement this
     int total_num = num_values + rhs->num_values;
-    int redis_num = total_num/2 - num_values;
+    int redis_num = total_num/2 - this->num_values;
 
     VALUETYPE parent_val = parent->get(parent_idx);
-    insert(parent_val);
+    this->insert(parent_val);
+    this->insert(rhs->getChild(0),this->num_children);
+    this->children[num_children-1]->parent = this;
+    rhs->remove_child(0);
 
     for(int i = 0 ; i< redis_num-1 ; i++)
     {
         //change the value of current node and right node
-        VALUETYPE borrowVal = rhs->get(i);
-        insert(borrowVal);
+//        VALUETYPE borrowVal = rhs->get(i);
+        VALUETYPE borrowVal = rhs->get(0);
+        this->insert(borrowVal);
         rhs->remove_value(borrowVal);
 
         //change the children of current node and right node
-        insert(rhs->getChild(i),num_children);
-        //rhs->getChild(i)->parent = this;    
-        children[num_children-1]->parent = this; //能访问到么? 和上面那个用哪个?
-        rhs->remove_child(i);
+//        this->insert(rhs->getChild(i),num_children);
+        this->insert(rhs->getChild(0),num_children);
+        //(rhs->getChild(i))->parent = this;    
+        this->children[num_children-1]->parent = this; 
+        rhs->remove_child(0);
+//        rhs->remove_child(i);
     }
 
     VALUETYPE retVal = rhs->get(0);
-    rhs->remove_value(retVal);
+    rhs->remove_value(0);
+//    rhs->remove_child(0);
+//    rhs->remove_value(rhs->find_value(retVal));
+    return retVal;
+}
+
+VALUETYPE Bnode_inner::redistributeLeft(Bnode_inner* lhs, int parent_idx) 
+{
+    assert(lhs->parent == this->parent); 
+    assert(parent_idx >= 0);
+    assert(parent_idx < (this->parent)->getNumValues());
+
+    // TODO: Implement this
+    int total_num = num_values + lhs->num_values;
+    int redis_num = total_num/2 - this->num_values + 1;  // right more than left
+
+    VALUETYPE parent_val = parent->get(parent_idx);
+    this->insert(parent_val);
+//    this->insert(lhs->getChild(lhs->getNumChildren()-1),0); //?
+//    (this->children[0])->parent = this;
+//    lhs->remove_child(lhs->getNumChildren()-1);
+
+    for(int i = 0 ; i < redis_num - 1 ; i++)
+    {
+        //change the value of current node and right node
+        VALUETYPE borrowVal = lhs->get(lhs->getNumValues()-1);
+        this->insert(borrowVal);
+        lhs->remove_value(borrowVal);
+
+        //change the children of current node and right node
+        this->insert(lhs->getChild(lhs->getNumChildren()-1),0);
+        // (this->getChild(i))->parent = lhs;    
+        (this->children[0])->parent = this; 
+        lhs->remove_child(lhs->getNumChildren()-1);
+    }
+    VALUETYPE retVal = this->get(0);
+    this->remove_value(0);
+//    this->remove_child(0);
+    return retVal;
+}
+
+//    for(int i = 0; i < redis_num; ++i)
+//    {
+//        VALUETYPE parent_val = parent->get(parent_idx);
+//        int parIdx = this->insert(parent_val);
+//        this->insert(rhs->getChild(0),parIdx+1);
+//        parent->remove_value(parent_val);
+//        parent_val = rhs->get(0);
+//        int parNewIdx = parent->insert(parent_val);
+//        assert(parNewIdx == parent_idx);
+//        // rhs rotate
+//        rhs->remove_value(0);
+//        rhs->remove_child(0);
+//    }
+//        
+//    VALUETYPE retVal = parent_val;
+//    VALUETYPE retVal = rhs->get(0);
+//    rhs->remove_value(retVal);
 
     // change the count of the children num
     //num_children = num_children + (redis_num-1);
     //rhs->num_children = rhs->num_children - (redis_num-1);
 
-    return retVal;
-}
 
 
 Bnode_inner* Bnode_inner::split(VALUETYPE& output_val, VALUETYPE insert_value, Bnode* insert_node) {
