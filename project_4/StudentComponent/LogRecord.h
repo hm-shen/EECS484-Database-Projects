@@ -30,7 +30,6 @@ class LogRecord {
   int getprevLSN() {return prevLSN;}
   int getTxID() {return txID;}
   TxType getType(){return type;}
-  
 
  protected:
   int lsn;
