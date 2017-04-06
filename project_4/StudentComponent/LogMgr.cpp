@@ -66,7 +66,16 @@ void LogMgr::setLastLSN(int txnum, int lsn)
  * maxLSN to disk. Don't forget to remove them from the
  * logtail once they're written!
  */
-void LogMgr::flushLogTail(int maxLSN){}
+void LogMgr::flushLogTail(int maxLSN)
+{
+    // append LogTail to disk & remove them from LogTail
+    for(vector<LogRecord*>::iterator it = this->logtail.begin(), 
+        it <= this->logtail.find(maxLSN), ++it)
+    {
+        (this->se)->updateLog(*it->toString());
+        this->logtail.erase(it);
+    }
+}
 
 
 /* 
@@ -88,7 +97,6 @@ bool LogMgr::redo(vector <LogRecord*> log){}
  */
 void LogMgr::undo(vector <LogRecord*> log, int txnum = NULL_TX){}
 
-vector<LogRecord*> LogMgr::stringToLRVector(string logstring){}
 
 /*
  * Abort the specified transaction.
@@ -147,6 +155,8 @@ int write(int txid, int page_id, int offset, string input, string oldtext)
     return newLSN;
     
 }
+
+vector<LogRecord*> LogMgr::stringToLRVector(string logstring){}
 
 /*
  * Sets this.se to engine. 
