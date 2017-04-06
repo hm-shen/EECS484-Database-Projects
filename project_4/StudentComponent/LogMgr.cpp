@@ -69,12 +69,11 @@ void LogMgr::setLastLSN(int txnum, int lsn)
 void LogMgr::flushLogTail(int maxLSN)
 {
     // append LogTail to disk & remove them from LogTail
-    for(vector<LogRecord*>::iterator it = this->logtail.begin(); 
-        it < this->logtail.end(); ++it)
+    while(this->logtail.size() != 0)
     {
-        if ( (*it)->getLSN() > maxLSN ) { break; }
-        (this->se)->updateLog((*it)->toString());
-        this->logtail.erase(it);
+        if (logtail.front()->getLSN() > maxLSN) { return; }
+        se->updateLog(logtail.front()->toString());
+        logtail.erase(logtail.begin());
     }
 }
 
