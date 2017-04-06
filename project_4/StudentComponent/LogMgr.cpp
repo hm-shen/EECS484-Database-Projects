@@ -27,9 +27,37 @@ int LogMgr::getLastLSN(int txnum)
  * Update the TX table to reflect the LSN of the most recent
  * log entry for this transaction.
  */
+
 void LogMgr::setLastLSN(int txnum, int lsn)
 {
-
+    // identify the type of the operation by inspecting logs (both on disk and mem)
+    TxType operType;
+    vector<LogRecord*> tempLog = this->stringToLRVector(se->getLog());
+    tempLog.insert(end(tempLog), begin(this->logtail), end(this->logtail));
+    for(vector<LogRecord*>::iterator it = tempLog.begin(), it != tempLog.end(); ++it)
+    {
+        if (*it->getLSN() == lsn)
+        {
+            operType = *it->getType();
+        }
+    }
+    // find txnum
+    map <int, txTableEntry> ::iterator iter = this->tx_table.find(txnum);
+    if ( iter != this->tx_table.end() )
+    {
+        // already exists; update is needed
+        iter->second.lastLSN = lsn;
+        if (operType == UPDATE || operType == CLR || operType == ABORT) 
+        { iter->second.status = U; return }
+        if (operType == COMMIT) { iter->second.status = C; return }
+        if (operType == END) { this->tx_table.erase(iter); return }
+    }
+    else
+    {
+        // new entry is needed
+        tx_table[txnum] = txTableEntry(lsn, U);
+        return;
+    }
 }
 
 
@@ -96,6 +124,7 @@ void recover(string log){}
  */
 int write(int txid, int page_id, int offset, string input, string oldtext)
 {
+    assert(txid >= 0);
     // update logtail
     int newLSN = se->nextLSN();   
     UpdateLogRecord *newLog = new UpdateLogRecord(newLSN, this->getLastLSN(txid),
@@ -113,6 +142,7 @@ int write(int txid, int page_id, int offset, string input, string oldtext)
     
     // update TT
     this->setLastLSN(txid, newLSN);
+
     // ? update pageLSN / page Status to dirty? 
     return newLSN;
     
