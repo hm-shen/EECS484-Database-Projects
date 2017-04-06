@@ -34,11 +34,11 @@ void LogMgr::setLastLSN(int txnum, int lsn)
     TxType operType;
     vector<LogRecord*> tempLog = this->stringToLRVector(se->getLog());
     tempLog.insert(end(tempLog), begin(this->logtail), end(this->logtail));
-    for(vector<LogRecord*>::iterator it = tempLog.begin(), it != tempLog.end(); ++it)
+    for(vector<LogRecord*>::iterator it = tempLog.begin(); it != tempLog.end(); ++it)
     {
-        if (*it->getLSN() == lsn)
+        if ((*it)->getLSN() == lsn)
         {
-            operType = *it->getType();
+            operType = (*it)->getType();
         }
     }
     // find txnum
@@ -48,9 +48,9 @@ void LogMgr::setLastLSN(int txnum, int lsn)
         // already exists; update is needed
         iter->second.lastLSN = lsn;
         if (operType == UPDATE || operType == CLR || operType == ABORT) 
-        { iter->second.status = U; return }
-        if (operType == COMMIT) { iter->second.status = C; return }
-        if (operType == END) { this->tx_table.erase(iter); return }
+        { iter->second.status = U; return; }
+        if (operType == COMMIT) { iter->second.status = C; return; }
+        if (operType == END) { this->tx_table.erase(iter); return; }
     }
     else
     {
@@ -69,10 +69,11 @@ void LogMgr::setLastLSN(int txnum, int lsn)
 void LogMgr::flushLogTail(int maxLSN)
 {
     // append LogTail to disk & remove them from LogTail
-    for(vector<LogRecord*>::iterator it = this->logtail.begin(), 
-        it <= this->logtail.find(maxLSN), ++it)
+    for(vector<LogRecord*>::iterator it = this->logtail.begin(); 
+        it < this->logtail.end(); ++it)
     {
-        (this->se)->updateLog(*it->toString());
+        if ( (*it)->getLSN() > maxLSN ) { break; }
+        (this->se)->updateLog((*it)->toString());
         this->logtail.erase(it);
     }
 }
@@ -130,7 +131,7 @@ void recover(string log){}
  * Called by StorageEngine whenever an update is called
  * LogMgr should update tables if required and return the LSN of the action performed
  */
-int write(int txid, int page_id, int offset, string input, string oldtext)
+int LogMgr::write(int txid, int page_id, int offset, string input, string oldtext)
 {
     assert(txid >= 0);
     // update logtail
@@ -146,7 +147,7 @@ int write(int txid, int page_id, int offset, string input, string oldtext)
         // new dirty page
         this->dirty_page_table[page_id] = newLSN;
     }
-    else  {assert( iter.second < newLSN )};
+    else  {assert(iter->second < newLSN);};
     
     // update TT
     this->setLastLSN(txid, newLSN);
