@@ -356,24 +356,71 @@ void LogMgr::abort(int txid)
 /*
  * Write the begin checkpoint and end checkpoint
  */
-void checkpoint(){}
+void LogMgr::checkpoint()
+{
+    // ******************how to write the preLSN & tx_id for the checkpoint?*******
+    int c1 = se->nextLSN();
+    LogRecord *check_begin = new LogRecord(c1,NULL_LSN,NULL_TX, BEGIN_CKPT);
+    map <int, txTableEntry> tx_sava = tx_table;
+    map <int, int> dp_save = dirty_page_table;  
+    
+    se->store_master(c1);
+    logtail.push_back(check_begin);
+    
+    int c2 = se->nextLSN();
+    LogRecord *check_end = new LogRecord(c2,c1,NULL_TX,txtable,ddtable);
+    logtail.push_back(check_end);
 
+    this->flushLogTail(c2);
+}
 /*
  * Commit the specified transaction.
  */
-void commit(int txid){}
+void LogMgr::commit(int txid)
+{
+    int com_id = se->nextLSN();
+    LogRecord *commit_log = new LogRecord(com_id,NULL_LSN,NULL_TX,COMMIT);
+    logtail.push_back(commit_log);
 
+    // flush -> change status    or  change status->flush???
+    tx_table[txid].status = C;
+    tx_table[txid].lastLSN = com_id;
+
+    this->flushLogTail(com_id);
+
+    //it is necessary to write TT status to "C" ??
+    //if :  COMMIT ->  begin_checkpoint ->  END  
+    // will the state of TT at begin_checkpoint is wrong ??
+
+    LogRecord *commit_log = new LogRecord(se->nextLSN(),NULL_LSN,NULL_TX,END);
+    logtail.push_back(commit_log);
+    tx_table.erase(txid);
+
+}
 /*
  * A function that StorageEngine will call when it's about to 
  * write a page to disk. 
  * Remember, you need to implement write-ahead logging
  */
-void pageFlushed(int page_id){}
+void LogMgr::pageFlushed(int page_id)
+{
+    int page_lsn = se->getLSN(page_id);
+    this->flushLogTail(page_lsn);
+    map <int, int>::iterator dp_i =  dirty_page_table.find(page_id);
+    dirty_page_table.erase(dp_i);
+}
 
 /*
  * Recover from a crash, given the log from the disk.
  */
-void recover(string log){}
+void LogMgr::recover(string log)
+{
+    vector <LogRecord*> recover_lg = stringToLRVector(log);
+    this->analyze(recover_lg);
+    bool a = this->redo();
+    if(!a){return;}
+    this->undo(recover_lg);
+}
 
 /*
  * Called by StorageEngine whenever an update is called
@@ -405,9 +452,26 @@ int LogMgr::write(int txid, int page_id, int offset, string input, string oldtex
     
 }
 
-vector<LogRecord*> LogMgr::stringToLRVector(string logstring){}
+vector<LogRecord*> LogMgr::stringToLRVector(string logstring)
+{
 
+
+    stringstream ss_stream;
+    vector<Log Record*> stv_vector;
+    ss_stream(logstring);
+
+    while(!ss_stream.eof())
+    {
+        getline(ss_stream,temp);
+        LogRecord* nrecord = LogRecord::stringToRecordPtr(temp);
+        stv_vector.push_back(nrecord);
+
+    }
+}
 /*
  * Sets this.se to engine. 
  */
-void setStorageEngine(StorageEngine* engine){}
+void LogMgr::setStorageEngine(StorageEngine* engine)
+{
+    this->se = engine;
+}
