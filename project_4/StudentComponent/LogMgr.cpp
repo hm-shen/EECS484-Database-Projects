@@ -383,16 +383,18 @@ void LogMgr::commit(int txid)
     // update TT Status
     tx_table[txid].status = C;
     tx_table[txid].lastLSN = com_id;
+    this->flushLogTail(com_id); 
 
-    // this->flushLogTail(com_id); **************************
+    // write END & remove this trx from TT
+    int newLSN = se->nextLSN();
+    commit_log = new LogRecord(newLSN,this->getLastLSN(txid),txid,END);
+    logtail.push_back(commit_log);
+    tx_table.erase(txid);
+
 
     //it is necessary to write TT status to "C" ??
     //if :  COMMIT ->  begin_checkpoint ->  END  
     // will the state of TT at begin_checkpoint is wrong ??
-
-//    LogRecord *commit_log = new LogRecord(se->nextLSN(),NULL_LSN,NULL_TX,END);
-//    logtail.push_back(commit_log);
-//    tx_table.erase(txid);
 
 }
 /*
