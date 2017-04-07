@@ -7,6 +7,7 @@
 #include <sstream>
 #include <string>
 #include <set>
+#include <algorithm>
 using namespace std;
 
 /*
@@ -84,7 +85,64 @@ void LogMgr::flushLogTail(int maxLSN)
 /* 
  * Run the analysis phase of ARIES.
  */
-void LogMgr::analyze(vector <LogRecord*> log){}
+void LogMgr::analyze(vector <LogRecord*> log)
+{
+    // retrieve snapshots using master record
+    int masterRecord = se->get_master();
+    LogRecord *_begin = nullptr;
+    ChkptLogRecord *begin = nullptr;
+    ChkptLogRecord *end = nullptr;
+
+    for (vector<LogRecord*>::reverse_iterator it = log.rbegin(); it != log.rend(); ++it)
+    {
+        if ((*it)->getType() == BEGIN_CKPT) 
+        { 
+            _begin = *it;
+            begin = dynamic_cast<ChkptLogRecord*>(*it);
+        }
+        if ((*it)->getType() == END_CKPT) { end = dynamic_cast<ChkptLogRecord *>(*it); }
+        if (begin != nullptr && end != nullptr) { break; }
+    }
+    assert(begin->getLSN() == masterRecord);
+    vector<LogRecord*>::iterator iter = find(log.begin(),log.end(),_begin);
+    this->tx_table = end->getTxTable();
+    this->dirty_page_table = end->getDirtyPageTable();
+
+    // update TT and DPT from begin
+    for (vector<LogRecord*>::iterator it = iter; it != log.end(); ++it)
+    {
+        LogRecord *curLog = *it;   
+        TxType operType = curLog->getType();
+        int txId = curLog->getTxID();
+        int curLSN = curLog->getLSN();
+        if (operType == ABORT)
+        {
+            this->tx_table[txId] = txTableEntry(curLSN, U);
+        }
+        else if (operType == UPDATE)
+        {
+            this->tx_table[txId] = txTableEntry(curLSN, U);
+            UpdateLogRecord *upLog = dynamic_cast<UpdateLogRecord*>(curLog);
+            if (dirty_page_table.find(upLog->getPageID()) == dirty_page_table.end())
+            {   dirty_page_table[upLog->getPageID()] = curLog->getLSN(); }
+        }
+        else if (operType == CLR)
+        {
+            this->tx_table[txId] = txTableEntry(curLSN, U);
+            CompensationLogRecord *clrLog = dynamic_cast<CompensationLogRecord*>(curLog);
+            if (dirty_page_table.find(clrLog->getPageID()) == dirty_page_table.end())
+            {   dirty_page_table[clrLog->getPageID()] = clrLog->getLSN(); }
+        }
+        else if (operType == COMMIT)
+        {
+            this->tx_table[txId] = txTableEntry(curLSN, C);
+        }
+        else if (operType == END)
+        {
+            this->tx_table.erase(txId);
+        }
+    }
+}
 
 /*
  * Run the redo phase of ARIES.
@@ -106,18 +164,22 @@ bool LogMgr::redo(vector <LogRecord*> log)
     }
 
     //start at recLSN
-    vector<LogRecord*>::iterator log_iter = logtail.begin()
+    vector<LogRecord*>::iterator log_iter = logtail.begin();
     while( (*log_iter)->getLSN() < sm_lsn){ ++log_iter; }
 
     for(;log_iter!=logtail.end();++log_iter)
     {
-        TxType curtype = *log_iter->getType();
+        TxType curtype = (*log_iter)->getType();
         // if is record is update or clr type, then judge whether need to do something
         if(curtype == UPDATE || curtype == CLR)
         {
+            int cur_pageid = 0;
+            int curlog_LSN = 0;
+            int off = 0;
+            string after_text;
             if(curtype == UPDATE)
             {
-                UpdateLogRecord* updata_record = dynamic_cast<UpdateLogRecord *>(log_iter);
+                UpdateLogRecord* updata_record = dynamic_cast<UpdateLogRecord*>(*log_iter);
                 cur_pageid = updata_record->getPageID();
                 curlog_LSN = updata_record->getLSN();
                 off = updata_record->getOffset();
@@ -125,13 +187,14 @@ bool LogMgr::redo(vector <LogRecord*> log)
             }
             if(curtype == CLR)
             {
-                UpdateLogRecord* clr_record = dynamic_cast<UpdateLogRecord *>(log_iter);
+                CompensationLogRecord* clr_record = dynamic_cast<CompensationLogRecord*>(*log_iter);
                 cur_pageid = clr_record->getPageID();
                 curlog_LSN = clr_record->getLSN();
                 off = clr_record->getOffset();
                 after_text = clr_record->getAfterImage();
             }
-
+            assert(cur_pageid != 0);
+            assert(curlog_LSN != 0);
             //is this page in the dirty table?
             map<int,int>::iterator it = dirty_page_table.find(cur_pageid);
             if( it!= dirty_page_table.end() )
@@ -164,7 +227,7 @@ bool LogMgr::redo(vector <LogRecord*> log)
             logtail.push_back(add);
             tx_table.erase(tx_iter);
         }
-        else{++tx_iter}
+        else{++tx_iter;}
     }
     return true;
 }
@@ -174,7 +237,7 @@ bool LogMgr::redo(vector <LogRecord*> log)
  * If a txnum is provided, abort that transaction.
  * Hint: the logic is very similar for these two tasks!
  */
-void LogMgr::undo(vector <LogRecord*> log, int txnum = NULL_TX)
+void LogMgr::undo(vector <LogRecord*> log, int txnum)
 {
     // identify live txs when crash
     priority_queue<int> undoList;  
