@@ -237,7 +237,7 @@ bool LogMgr::redo(vector <LogRecord*> log)
  * If a txnum is provided, abort that transaction.
  * Hint: the logic is very similar for these two tasks!
  */
-void LogMgr::undo(vector <LogRecord*> log, int txnum)
+void LogMgr::undo(vector <LogRecord*> log, int txnum /*=NULL_TX*/)
 {
     // identify live txs when crash
     priority_queue<int> undoList;  
@@ -359,42 +359,40 @@ void LogMgr::abort(int txid)
 void LogMgr::checkpoint()
 {
     // ******************how to write the preLSN & tx_id for the checkpoint?*******
-    int c1 = se->nextLSN();
-    LogRecord *check_begin = new LogRecord(c1,NULL_LSN,NULL_TX, BEGIN_CKPT);
-    map <int, txTableEntry> tx_sava = tx_table;
-    map <int, int> dp_save = dirty_page_table;  
-    
-    se->store_master(c1);
+    int beginChkpt = se->nextLSN();
+    se->store_master(beginChkpt);
+    LogRecord *check_begin = new LogRecord(beginChkpt,NULL_LSN,NULL_TX, BEGIN_CKPT);
     logtail.push_back(check_begin);
     
-    int c2 = se->nextLSN();
-    LogRecord *check_end = new LogRecord(c2,c1,NULL_TX,txtable,ddtable);
+    int endChkpt = se->nextLSN();
+    ChkptLogRecord *check_end = new ChkptLogRecord(endChkpt,beginChkpt,NULL_TX,this->tx_table,this->dirty_page_table);
     logtail.push_back(check_end);
-
-    this->flushLogTail(c2);
+    this->flushLogTail(endChkpt);
 }
 /*
  * Commit the specified transaction.
  */
 void LogMgr::commit(int txid)
 {
+    // write a COMMIT log
     int com_id = se->nextLSN();
-    LogRecord *commit_log = new LogRecord(com_id,NULL_LSN,NULL_TX,COMMIT);
+    LogRecord *commit_log = new LogRecord(com_id,this->getLastLSN(txid),txid,COMMIT);
     logtail.push_back(commit_log);
 
     // flush -> change status    or  change status->flush???
+    // update TT Status
     tx_table[txid].status = C;
     tx_table[txid].lastLSN = com_id;
 
-    this->flushLogTail(com_id);
+    // this->flushLogTail(com_id); **************************
 
     //it is necessary to write TT status to "C" ??
     //if :  COMMIT ->  begin_checkpoint ->  END  
     // will the state of TT at begin_checkpoint is wrong ??
 
-    LogRecord *commit_log = new LogRecord(se->nextLSN(),NULL_LSN,NULL_TX,END);
-    logtail.push_back(commit_log);
-    tx_table.erase(txid);
+//    LogRecord *commit_log = new LogRecord(se->nextLSN(),NULL_LSN,NULL_TX,END);
+//    logtail.push_back(commit_log);
+//    tx_table.erase(txid);
 
 }
 /*
@@ -404,9 +402,12 @@ void LogMgr::commit(int txid)
  */
 void LogMgr::pageFlushed(int page_id)
 {
+    // flush log file to disk 
     int page_lsn = se->getLSN(page_id);
     this->flushLogTail(page_lsn);
+    // remove the page from DPT
     map <int, int>::iterator dp_i =  dirty_page_table.find(page_id);
+    assert(dp_i != dirty_page_table.end());
     dirty_page_table.erase(dp_i);
 }
 
@@ -417,8 +418,9 @@ void LogMgr::recover(string log)
 {
     vector <LogRecord*> recover_lg = stringToLRVector(log);
     this->analyze(recover_lg);
-    bool a = this->redo();
-    if(!a){return;}
+    bool flag = this->redo(recover_lg);
+    assert(flag == true);
+    if(!flag){return;}
     this->undo(recover_lg);
 }
 
@@ -454,19 +456,17 @@ int LogMgr::write(int txid, int page_id, int offset, string input, string oldtex
 
 vector<LogRecord*> LogMgr::stringToLRVector(string logstring)
 {
-
-
-    stringstream ss_stream;
-    vector<Log Record*> stv_vector;
-    ss_stream(logstring);
+    istringstream ss_stream(logstring);
+    vector<LogRecord*> stv_vector;
+    string temp;
 
     while(!ss_stream.eof())
     {
         getline(ss_stream,temp);
         LogRecord* nrecord = LogRecord::stringToRecordPtr(temp);
         stv_vector.push_back(nrecord);
-
     }
+    return stv_vector;
 }
 /*
  * Sets this.se to engine. 
