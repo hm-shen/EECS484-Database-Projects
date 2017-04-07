@@ -91,7 +91,83 @@ void LogMgr::analyze(vector <LogRecord*> log){}
  * If the StorageEngine stops responding, return false.
  * Else when redo phase is complete, return true. 
  */
-bool LogMgr::redo(vector <LogRecord*> log){}
+bool LogMgr::redo(vector <LogRecord*> log)
+{
+    if (dirty_page_table.empty()) return true;
+    map<int,int>::iterator dp_iter = dirty_page_table.begin();
+    // find the smallest recLsn of any page in dirty page table
+    int sm_lsn = dp_iter->second;
+    for(;dp_iter!=dirty_page_table.end();++dp_iter)
+    {
+        if(dp_iter->second < sm_lsn)
+        {
+            sm_lsn = dp_iter->second;
+        }
+    }
+
+    //start at recLSN
+    vector<LogRecord*>::iterator log_iter = logtail.begin()
+    while( (*log_iter)->getLSN() < sm_lsn){ ++log_iter; }
+
+    for(;log_iter!=logtail.end();++log_iter)
+    {
+        TxType curtype = *log_iter->getType();
+        // if is record is update or clr type, then judge whether need to do something
+        if(curtype == UPDATE || curtype == CLR)
+        {
+            if(curtype == UPDATE)
+            {
+                UpdateLogRecord* updata_record = dynamic_cast<UpdateLogRecord *>(log_iter);
+                cur_pageid = updata_record->getPageID();
+                curlog_LSN = updata_record->getLSN();
+                off = updata_record->getOffset();
+                after_text = updata_record->getAfterImage();
+            }
+            if(curtype == CLR)
+            {
+                UpdateLogRecord* clr_record = dynamic_cast<UpdateLogRecord *>(log_iter);
+                cur_pageid = clr_record->getPageID();
+                curlog_LSN = clr_record->getLSN();
+                off = clr_record->getOffset();
+                after_text = clr_record->getAfterImage();
+            }
+
+            //is this page in the dirty table?
+            map<int,int>::iterator it = dirty_page_table.find(cur_pageid);
+            if( it!= dirty_page_table.end() )
+            {
+                // is the dirty page entry's recLSN <= current log LSN?
+                if( it->second <= curlog_LSN)
+                {
+                    // is the LSN recorded on page is smaller than current log LSN
+                    if( se->getLSN(cur_pageid)< curlog_LSN)
+                    {
+                        // apply the update/CLR log 
+                        // set its PageLSN to the current log's LSN
+                        bool w = se->pageWrite(cur_pageid, off, after_text, curlog_LSN);
+                        if (w){ return false;}
+                    }
+                }
+            }
+            // end of dealing with UPDATE/CLR
+        }  
+    }
+
+    //at end of the redo phase,
+    //"END" the records for all transactions with status"C"
+    map<int,txTableEntry>::iterator tx_iter = tx_table.begin();
+    while(tx_iter!=tx_table.end())
+    {
+        if((tx_iter->second).status == C)
+        {
+            LogRecord *add = new LogRecord(se->nextLSN(),(tx_iter->second).lastLSN,tx_iter->first,END);
+            logtail.push_back(add);
+            tx_table.erase(tx_iter);
+        }
+        else{++tx_iter}
+    }
+    return true;
+}
 
 /*
  * If no txnum is specified, run the undo phase of ARIES.
