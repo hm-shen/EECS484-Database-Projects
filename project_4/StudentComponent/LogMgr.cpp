@@ -1,8 +1,12 @@
 #include <map>
 #include <vector>
+#include <queue>
 #include "LogMgr.h"
 #include <assert.h>
-
+#include <cstring>
+#include <sstream>
+#include <string>
+#include <set>
 using namespace std;
 
 /*
@@ -77,7 +81,6 @@ void LogMgr::flushLogTail(int maxLSN)
     }
 }
 
-
 /* 
  * Run the analysis phase of ARIES.
  */
@@ -95,14 +98,121 @@ bool LogMgr::redo(vector <LogRecord*> log){}
  * If a txnum is provided, abort that transaction.
  * Hint: the logic is very similar for these two tasks!
  */
-void LogMgr::undo(vector <LogRecord*> log, int txnum = NULL_TX){}
+void LogMgr::undo(vector <LogRecord*> log, int txnum = NULL_TX)
+{
+    // identify live txs when crash
+    priority_queue<int> undoList;  
+    if (txnum != NULL_TX)
+    {
+        undoList.push(this->tx_table[txnum].lastLSN);
+    }
+    else
+    {
+        for (map<int, txTableEntry>::iterator it = tx_table.begin(); it != tx_table.end(); ++it)
+        {
+            undoList.push(it->second.lastLSN);
+        }
+    }
+    
+    // try to undo each log
+    while (!undoList.empty())
+    {
+        int    curLSN = undoList.top(); //max LSN in undoList
+        int    prevLSN = 0; // store prev LSN
+        int    txId = 0; // store trx ID corresponding to curLSN
+        TxType operType; // store current log type
+        LogRecord *curLog = nullptr; // points to current log
+        undoList.pop();
+
+        // get corresponding log from logTail 
+        for(vector<LogRecord*>::iterator it = log.begin();it != log.end(); ++it)
+        {
+            if ((*it)->getLSN() == curLSN)
+            {
+                operType = (*it)->getType();
+                prevLSN = (*it)->getprevLSN();
+                txId = (*it)->getTxID();
+                curLog = *it;
+            }
+        }
+        // undo operations
+        if (operType == UPDATE)
+        {
+            // undo this log
+            UpdateLogRecord *upLog = dynamic_cast<UpdateLogRecord*>(curLog);
+            assert(upLog != nullptr);
+            int pageId = upLog->getPageID();
+            int offSet = upLog->getOffset();
+            int newLSN = se->nextLSN();
+            string befImg = upLog->getBeforeImage();
+            string aftImg = upLog->getAfterImage();
+            
+            // write a CLR log
+            this->logtail.push_back(new CompensationLogRecord(newLSN, getLastLSN(txId), txId, pageId, offSet, befImg, prevLSN));
+            this->setLastLSN(txId, newLSN);
+
+            // write to page in mem
+            bool flag = se->pageWrite(pageId, offSet, befImg, newLSN);
+            if (flag == false) { assert(flag != false); return; }
+            if (prevLSN != NULL_LSN) { undoList.push(prevLSN); }
+        }
+        else if (operType == CLR)
+        {
+            // go to the next LSN
+            CompensationLogRecord *clrLog = dynamic_cast<CompensationLogRecord*>(curLog);
+            assert(clrLog != nullptr);
+//            int pageId = clrLog->getPageID();
+//            int offSet = clrLog->getOffset();
+            int undoNextLSN = clrLog->getUndoNextLSN();
+            int newLSN = se->nextLSN();
+            string aftImg = clrLog->getAfterImage();
+            if (undoNextLSN != NULL_LSN)
+            {
+                undoList.push(undoNextLSN);
+            }
+            else 
+            {
+                // current trx has been undone
+                this->logtail.push_back(new LogRecord(newLSN, getLastLSN(txId), txId, END));
+                this->tx_table.erase(txId);
+            }
+        }
+        else if (operType == ABORT)
+        {
+            int newLSN = se->nextLSN();
+            if (prevLSN != NULL_LSN) 
+            { 
+                undoList.push(prevLSN); 
+            }
+            else
+            {
+                this->logtail.push_back(new LogRecord(newLSN, getLastLSN(txId), txId, END));
+                this->tx_table.erase(txId);
+            }
+        }
+    }
+    return;
+}
 
 
 /*
  * Abort the specified transaction.
  * Hint: you can use your undo function
  */
-void abort(int txid){}
+void LogMgr::abort(int txid)
+{
+    // write log
+    int prevLSN = this->getLastLSN(txid);
+    int newLSN = se->nextLSN();
+    LogRecord *abortLog = new LogRecord(newLSN, prevLSN, txid, ABORT);
+    this->logtail.push_back(abortLog);
+    this->setLastLSN(txid, newLSN);
+
+    // get all logs from disk and mem
+    vector<LogRecord*> tempLog = this->stringToLRVector(se->getLog());
+    tempLog.insert(end(tempLog), begin(this->logtail), end(this->logtail));
+    this->undo( tempLog, txid );
+}
 
 /*
  * Write the begin checkpoint and end checkpoint
