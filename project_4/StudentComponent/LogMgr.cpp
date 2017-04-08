@@ -55,7 +55,7 @@ void LogMgr::setLastLSN(int txnum, int lsn)
         if (operType == UPDATE || operType == CLR || operType == ABORT) 
         { iter->second.status = U; return; }
         if (operType == COMMIT) { iter->second.status = C; return; }
-        if (operType == END) { this->tx_table.erase(iter); return; }
+        if (operType == END) { iter = this->tx_table.erase(iter); return; }
     }
     else
     {
@@ -103,10 +103,16 @@ void LogMgr::analyze(vector <LogRecord*> log)
         if ((*it)->getType() == END_CKPT) { end = dynamic_cast<ChkptLogRecord *>(*it); }
         if (begin != nullptr && end != nullptr) { break; }
     }
-    assert(begin->getLSN() == masterRecord);
-    vector<LogRecord*>::iterator iter = find(log.begin(),log.end(),_begin);
-    this->tx_table = end->getTxTable();
-    this->dirty_page_table = end->getDirtyPageTable();
+    vector<LogRecord*>::iterator iter = log.begin();
+
+    // if both begin and end are null (no historical checkpoint)
+    if (begin != nullptr && end != nullptr)
+    {
+        assert(begin->getLSN() == masterRecord);
+        iter = find(log.begin(),log.end(),_begin);
+        this->tx_table = end->getTxTable();
+        this->dirty_page_table = end->getDirtyPageTable();
+    }
 
     // update TT and DPT from begin
     for (vector<LogRecord*>::iterator it = iter; it != log.end(); ++it)
@@ -155,19 +161,18 @@ bool LogMgr::redo(vector <LogRecord*> log)
     map<int,int>::iterator dp_iter = dirty_page_table.begin();
     // find the smallest recLsn of any page in dirty page table
     int sm_lsn = dp_iter->second;
-    for(;dp_iter!=dirty_page_table.end();++dp_iter)
+    for(dp_iter = dirty_page_table.begin(); dp_iter!=dirty_page_table.end();++dp_iter)
     {
         if(dp_iter->second < sm_lsn)
         {
             sm_lsn = dp_iter->second;
         }
-    }
+     }
 
     //start at recLSN
-    vector<LogRecord*>::iterator log_iter = logtail.begin();
+    vector<LogRecord*>::iterator log_iter = log.begin();
     while( (*log_iter)->getLSN() < sm_lsn){ ++log_iter; }
-
-    for(;log_iter!=logtail.end();++log_iter)
+    for(;log_iter!=log.end();++log_iter)
     {
         TxType curtype = (*log_iter)->getType();
         // if is record is update or clr type, then judge whether need to do something
@@ -195,7 +200,7 @@ bool LogMgr::redo(vector <LogRecord*> log)
             }
             assert(cur_pageid != 0);
             assert(curlog_LSN != 0);
-            //is this page in the dirty table?
+            // is this page in the dirty table?
             map<int,int>::iterator it = dirty_page_table.find(cur_pageid);
             if( it!= dirty_page_table.end() )
             {
@@ -208,14 +213,13 @@ bool LogMgr::redo(vector <LogRecord*> log)
                         // apply the update/CLR log 
                         // set its PageLSN to the current log's LSN
                         bool w = se->pageWrite(cur_pageid, off, after_text, curlog_LSN);
-                        if (w){ return false;}
+                        if (!w){ return false;}
                     }
                 }
             }
             // end of dealing with UPDATE/CLR
         }  
     }
-
     //at end of the redo phase,
     //"END" the records for all transactions with status"C"
     map<int,txTableEntry>::iterator tx_iter = tx_table.begin();
@@ -225,7 +229,7 @@ bool LogMgr::redo(vector <LogRecord*> log)
         {
             LogRecord *add = new LogRecord(se->nextLSN(),(tx_iter->second).lastLSN,tx_iter->first,END);
             logtail.push_back(add);
-            tx_table.erase(tx_iter);
+            tx_iter = tx_table.erase(tx_iter);
         }
         else{++tx_iter;}
     }
@@ -243,7 +247,8 @@ void LogMgr::undo(vector <LogRecord*> log, int txnum /*=NULL_TX*/)
     priority_queue<int> undoList;  
     if (txnum != NULL_TX)
     {
-        undoList.push(this->tx_table[txnum].lastLSN);
+//        undoList.push(this->tx_table[txnum].lastLSN);
+        undoList.push(this->getLastLSN(txnum));
     }
     else
     {
@@ -293,15 +298,21 @@ void LogMgr::undo(vector <LogRecord*> log, int txnum /*=NULL_TX*/)
             // write to page in mem
             bool flag = se->pageWrite(pageId, offSet, befImg, newLSN);
             if (flag == false) { assert(flag != false); return; }
-            if (prevLSN != NULL_LSN) { undoList.push(prevLSN); }
+            if (prevLSN != NULL_LSN) 
+            {     
+                undoList.push(prevLSN); 
+            }
+            else 
+            {
+                this->logtail.push_back(new LogRecord(se->nextLSN(), getLastLSN(txId), txId, END));
+                this->tx_table.erase(txId);
+            }
         }
         else if (operType == CLR)
         {
             // go to the next LSN
             CompensationLogRecord *clrLog = dynamic_cast<CompensationLogRecord*>(curLog);
             assert(clrLog != nullptr);
-//            int pageId = clrLog->getPageID();
-//            int offSet = clrLog->getOffset();
             int undoNextLSN = clrLog->getUndoNextLSN();
             int newLSN = se->nextLSN();
             string aftImg = clrLog->getAfterImage();
@@ -318,13 +329,13 @@ void LogMgr::undo(vector <LogRecord*> log, int txnum /*=NULL_TX*/)
         }
         else if (operType == ABORT)
         {
-            int newLSN = se->nextLSN();
             if (prevLSN != NULL_LSN) 
             { 
                 undoList.push(prevLSN); 
             }
             else
             {
+                int newLSN = se->nextLSN();
                 this->logtail.push_back(new LogRecord(newLSN, getLastLSN(txId), txId, END));
                 this->tx_table.erase(txId);
             }
@@ -410,7 +421,7 @@ void LogMgr::pageFlushed(int page_id)
     // remove the page from DPT
     map <int, int>::iterator dp_i =  dirty_page_table.find(page_id);
     assert(dp_i != dirty_page_table.end());
-    dirty_page_table.erase(dp_i);
+    dp_i = dirty_page_table.erase(dp_i);
 }
 
 /*
@@ -465,8 +476,11 @@ vector<LogRecord*> LogMgr::stringToLRVector(string logstring)
     while(!ss_stream.eof())
     {
         getline(ss_stream,temp);
-        LogRecord* nrecord = LogRecord::stringToRecordPtr(temp);
-        stv_vector.push_back(nrecord);
+        if (temp != "") 
+        {
+            LogRecord* nrecord = LogRecord::stringToRecordPtr(temp);
+            stv_vector.push_back(nrecord);
+        }
     }
     return stv_vector;
 }
