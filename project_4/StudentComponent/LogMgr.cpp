@@ -89,27 +89,25 @@ void LogMgr::analyze(vector <LogRecord*> log)
 {
     // retrieve snapshots using master record
     int masterRecord = se->get_master();
-    LogRecord *_begin = nullptr;
-    ChkptLogRecord *begin = nullptr;
+    LogRecord *begin = nullptr;
     ChkptLogRecord *end = nullptr;
 
     for (vector<LogRecord*>::reverse_iterator it = log.rbegin(); it != log.rend(); ++it)
     {
         if ((*it)->getType() == BEGIN_CKPT) 
         { 
-            _begin = *it;
-            begin = dynamic_cast<ChkptLogRecord*>(*it);
+            begin = (*it);
         }
         if ((*it)->getType() == END_CKPT) { end = dynamic_cast<ChkptLogRecord *>(*it); }
-        if (begin != nullptr && end != nullptr) { break; }
+        if ((begin != nullptr) && (end != nullptr)) { break; }
     }
     vector<LogRecord*>::iterator iter = log.begin();
 
     // if both begin and end are null (no historical checkpoint)
     if (begin != nullptr && end != nullptr)
     {
-        assert(begin->getLSN() == masterRecord);
-        iter = find(log.begin(),log.end(),_begin);
+//        assert(begin->getLSN() == masterRecord);
+        iter = find(log.begin(),log.end(),begin);
         this->tx_table = end->getTxTable();
         this->dirty_page_table = end->getDirtyPageTable();
     }
@@ -157,7 +155,7 @@ void LogMgr::analyze(vector <LogRecord*> log)
  */
 bool LogMgr::redo(vector <LogRecord*> log)
 {
-    if (dirty_page_table.empty()) return true;
+    if (this->dirty_page_table.empty()) return true;
     map<int,int>::iterator dp_iter = dirty_page_table.begin();
     // find the smallest recLsn of any page in dirty page table
     int sm_lsn = dp_iter->second;
@@ -208,7 +206,7 @@ bool LogMgr::redo(vector <LogRecord*> log)
                 if( it->second <= curlog_LSN)
                 {
                     // is the LSN recorded on page is smaller than current log LSN
-                    if( se->getLSN(cur_pageid)< curlog_LSN)
+                    if( se->getLSN(cur_pageid) < curlog_LSN )
                     {
                         // apply the update/CLR log 
                         // set its PageLSN to the current log's LSN
@@ -268,7 +266,7 @@ void LogMgr::undo(vector <LogRecord*> log, int txnum /*=NULL_TX*/)
         LogRecord *curLog = nullptr; // points to current log
         undoList.pop();
 
-        // get corresponding log from logTail 
+        // get corresponding log from inputLog 
         for(vector<LogRecord*>::iterator it = log.begin();it != log.end(); ++it)
         {
             if ((*it)->getLSN() == curLSN)
@@ -277,6 +275,7 @@ void LogMgr::undo(vector <LogRecord*> log, int txnum /*=NULL_TX*/)
                 prevLSN = (*it)->getprevLSN();
                 txId = (*it)->getTxID();
                 curLog = *it;
+								break;
             }
         }
         // undo operations
@@ -314,7 +313,6 @@ void LogMgr::undo(vector <LogRecord*> log, int txnum /*=NULL_TX*/)
             CompensationLogRecord *clrLog = dynamic_cast<CompensationLogRecord*>(curLog);
             assert(clrLog != nullptr);
             int undoNextLSN = clrLog->getUndoNextLSN();
-            int newLSN = se->nextLSN();
             string aftImg = clrLog->getAfterImage();
             if (undoNextLSN != NULL_LSN)
             {
@@ -323,6 +321,7 @@ void LogMgr::undo(vector <LogRecord*> log, int txnum /*=NULL_TX*/)
             else 
             {
                 // current trx has been undone
+            		int newLSN = se->nextLSN();
                 this->logtail.push_back(new LogRecord(newLSN, getLastLSN(txId), txId, END));
                 this->tx_table.erase(txId);
             }
@@ -421,7 +420,8 @@ void LogMgr::pageFlushed(int page_id)
     // remove the page from DPT
     map <int, int>::iterator dp_i =  dirty_page_table.find(page_id);
     assert(dp_i != dirty_page_table.end());
-    dp_i = dirty_page_table.erase(dp_i);
+    dirty_page_table.erase(dp_i);
+//    dp_i = dirty_page_table.erase(dp_i);
 }
 
 /*
@@ -461,8 +461,6 @@ int LogMgr::write(int txid, int page_id, int offset, string input, string oldtex
     
     // update TT
     this->setLastLSN(txid, newLSN);
-
-    // ? update pageLSN / page Status to dirty? 
     return newLSN;
     
 }
