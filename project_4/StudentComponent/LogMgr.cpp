@@ -196,8 +196,8 @@ bool LogMgr::redo(vector <LogRecord*> log)
                 off = clr_record->getOffset();
                 after_text = clr_record->getAfterImage();
             }
-            assert(cur_pageid != 0);
-            assert(curlog_LSN != 0);
+            // assert(cur_pageid != 0);
+            // assert(curlog_LSN != 0);
             // is this page in the dirty table?
             map<int,int>::iterator it = dirty_page_table.find(cur_pageid);
             if( it!= dirty_page_table.end() )
@@ -275,7 +275,7 @@ void LogMgr::undo(vector <LogRecord*> log, int txnum /*=NULL_TX*/)
                 prevLSN = (*it)->getprevLSN();
                 txId = (*it)->getTxID();
                 curLog = *it;
-								break;
+                break;
             }
         }
         // undo operations
@@ -283,7 +283,7 @@ void LogMgr::undo(vector <LogRecord*> log, int txnum /*=NULL_TX*/)
         {
             // undo this log
             UpdateLogRecord *upLog = dynamic_cast<UpdateLogRecord*>(curLog);
-            assert(upLog != nullptr);
+            // assert(upLog != nullptr);
             int pageId = upLog->getPageID();
             int offSet = upLog->getOffset();
             int newLSN = se->nextLSN();
@@ -296,7 +296,7 @@ void LogMgr::undo(vector <LogRecord*> log, int txnum /*=NULL_TX*/)
 
             // write to page in mem
             bool flag = se->pageWrite(pageId, offSet, befImg, newLSN);
-            if (flag == false) { assert(flag != false); return; }
+            if (flag == false) {  return; }
             if (prevLSN != NULL_LSN) 
             {     
                 undoList.push(prevLSN); 
@@ -311,7 +311,7 @@ void LogMgr::undo(vector <LogRecord*> log, int txnum /*=NULL_TX*/)
         {
             // go to the next LSN
             CompensationLogRecord *clrLog = dynamic_cast<CompensationLogRecord*>(curLog);
-            assert(clrLog != nullptr);
+            // assert(clrLog != nullptr);
             int undoNextLSN = clrLog->getUndoNextLSN();
             string aftImg = clrLog->getAfterImage();
             if (undoNextLSN != NULL_LSN)
@@ -419,8 +419,9 @@ void LogMgr::pageFlushed(int page_id)
     this->flushLogTail(page_lsn);
     // remove the page from DPT
     map <int, int>::iterator dp_i =  dirty_page_table.find(page_id);
-    assert(dp_i != dirty_page_table.end());
-    dirty_page_table.erase(dp_i);
+    if(dp_i != dirty_page_table.end())
+        {dirty_page_table.erase(dp_i);}
+    // dirty_page_table.erase(dp_i);
 //    dp_i = dirty_page_table.erase(dp_i);
 }
 
@@ -432,7 +433,7 @@ void LogMgr::recover(string log)
     vector <LogRecord*> recover_lg = stringToLRVector(log);
     this->analyze(recover_lg);
     bool flag = this->redo(recover_lg);
-    assert(flag == true);
+    //assert(flag == true);
     if(!flag){return;}
     this->undo(recover_lg);
 }
@@ -443,7 +444,7 @@ void LogMgr::recover(string log)
  */
 int LogMgr::write(int txid, int page_id, int offset, string input, string oldtext)
 {
-    assert(txid >= 0);
+    // assert(txid >= 0);
     // update logtail
     int newLSN = se->nextLSN();   
     UpdateLogRecord *newLog = new UpdateLogRecord(newLSN, this->getLastLSN(txid),
@@ -457,7 +458,7 @@ int LogMgr::write(int txid, int page_id, int offset, string input, string oldtex
         // new dirty page
         this->dirty_page_table[page_id] = newLSN;
     }
-    else  {assert(iter->second < newLSN);};
+    // else  {assert(iter->second < newLSN);};
     
     // update TT
     this->setLastLSN(txid, newLSN);
